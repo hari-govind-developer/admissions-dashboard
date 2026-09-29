@@ -1,0 +1,2342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admissions & Leads Analytics Dashboard</title>
+  
+  <!-- Inter Font & Chart.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --bg: #f3f6fa;
+      --card-bg: #ffffff;
+      --border: #e2e8f0;
+      --border-subtle: #edf2f7;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --purple: #6366f1;
+      --purple-dark: #4f46e5;
+      --purple-light: #e0e7ff;
+      --green: #10b981;
+      --green-light: #d1fae5;
+      --cyan: #06b6d4;
+      --cyan-light: #cffafe;
+      --orange: #f59e0b;
+      --orange-light: #fef3c7;
+      --blue: #3b82f6;
+      --blue-light: #dbeafe;
+      --pink: #ec4899;
+      --dark-card: #0f172a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text-main);
+      padding: 20px 28px 60px;
+      min-width: 1200px;
+    }
+
+    /* Top Brand Nav */
+    .top-navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: #5b21b6;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+    }
+
+    .brand-icon svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .brand-text h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .brand-text p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .btn-outline {
+      background: #fff;
+      border: 1px solid var(--border);
+      color: #334155;
+    }
+
+    .btn-outline:hover { background: #f8fafc; }
+
+    .btn-primary {
+      background: #4f46e5;
+      border: 1px solid #4f46e5;
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #4338ca; }
+
+    /* Navigation Bar Tabs */
+    .tab-bar-container {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 4px 6px;
+      display: flex;
+      gap: 4px;
+      margin-bottom: 16px;
+      overflow-x: auto;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    .tab-btn svg { width: 16px; height: 16px; }
+
+    .tab-btn:hover {
+      color: #0f172a;
+      background: #f1f5f9;
+    }
+
+    .tab-btn.active {
+      color: #4f46e5;
+      background: #eef2ff;
+      border-bottom: 2px solid #4f46e5;
+    }
+
+    /* Filter Controls Card */
+    .filter-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }
+
+    .filter-row-1 {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .input-search {
+      padding: 7px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      outline: none;
+      min-width: 170px;
+    }
+
+    .select-ctrl, .date-ctrl {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: #334155;
+      outline: none;
+      background: #fff;
+    }
+
+    .stream-toggle {
+      display: inline-flex;
+      background: #f1f5f9;
+      padding: 3px;
+      border-radius: 8px;
+      gap: 2px;
+    }
+
+    .stream-toggle button {
+      border: none;
+      background: transparent;
+      padding: 5px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+
+    .stream-toggle button.active {
+      background: #fff;
+      color: #4f46e5;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+    }
+
+    .filter-row-2 {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .quick-filters {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+    }
+
+    .quick-pill {
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .quick-pill.active {
+      background: #4f46e5;
+      color: #fff;
+      border-color: #4f46e5;
+    }
+
+    .status-meta {
+      font-size: 0.76rem;
+      color: var(--text-light);
+      display: flex;
+      gap: 14px;
+    }
+
+    /* Top 6 KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+    }
+
+    .kpi-card::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .kpi-1::after { background: var(--green); }
+    .kpi-2::after { background: var(--purple); }
+    .kpi-3::after { background: var(--cyan); }
+    .kpi-4::after { background: var(--orange); }
+    .kpi-5::after { background: #8b5cf6; }
+    .kpi-6::after { background: var(--blue); }
+
+    .kpi-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .kpi-title {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      color: var(--text-muted);
+      line-height: 1.2;
+    }
+
+    .kpi-icon-pill {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+    }
+
+    .kpi-value {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 8px;
+      letter-spacing: -0.3px;
+    }
+
+    .kpi-subtext {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px 8px;
+      align-items: center;
+    }
+
+    .kpi-badge {
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      font-size: 0.7rem;
+    }
+
+    /* Main View Sections */
+    .view-content {
+      display: none;
+    }
+
+    .view-content.active {
+      display: block;
+    }
+
+    .dashboard-panel {
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .panel-header {
+      margin-bottom: 18px;
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .panel-subtitle {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Chart Module */
+    .chart-inspector {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.78rem;
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      color: var(--text-muted);
+    }
+
+    .chart-inspector span strong {
+      color: var(--text-main);
+    }
+
+    .overview-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1.6fr;
+      gap: 20px;
+    }
+
+    /* Stream Box Cards */
+    .stream-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+
+    .stream-box-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+
+    .stream-subgrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      text-align: center;
+    }
+
+    .stream-substat {
+      background: #f8fafc;
+      padding: 8px;
+      border-radius: 6px;
+    }
+
+    .stream-substat-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .stream-substat-val {
+      font-weight: 700;
+      font-size: 0.92rem;
+      margin-top: 2px;
+    }
+
+    /* Channel Bars */
+    .channel-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 0.82rem;
+    }
+
+    .channel-name {
+      width: 170px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .channel-bar-wrap {
+      flex: 1;
+      height: 8px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .channel-bar-fill {
+      height: 100%;
+      background: #4f46e5;
+      border-radius: 99px;
+    }
+
+    .channel-metrics {
+      width: 180px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-size: 0.78rem;
+    }
+
+    /* Tables */
+    .custom-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    .custom-table th, .custom-table td {
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .custom-table th {
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .custom-table tr:hover {
+      background: #fafbfc;
+    }
+
+    .tag-pill {
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .tag-paid { background: #f3e8ff; color: #9333ea; }
+    .tag-organic { background: #dcfce7; color: #16a34a; }
+
+    /* Funnel View */
+    .funnel-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .funnel-step-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      background: #fff;
+    }
+
+    .step-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .step-val {
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    .step-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .step-badge {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* Scoreboard Hero Banner */
+    .scoreboard-hero {
+      background: #0f172a;
+      color: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .scoreboard-hero-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .scoreboard-hero-sub {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      max-width: 650px;
+      margin-bottom: 20px;
+    }
+
+    .scoreboard-hero-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      padding-top: 16px;
+    }
+
+    .sb-stat-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .sb-stat-val {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-top: 4px;
+    }
+
+    /* Scoreboard Team Cards */
+    .scoreboard-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .sb-card {
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sb-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .sb-card-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+    }
+
+    .sb-rank-badge {
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 800;
+      padding: 3px 6px;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sb-team-name {
+      font-weight: 800;
+      font-size: 0.95rem;
+      color: #0f172a;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .sb-exec-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .sb-stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .sb-stat-tile {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .sb-tile-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .sb-tile-val {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.2px;
+    }
+
+    .val-dark { color: #0f172a; }
+    .val-green { color: #10b981; }
+    .val-blue { color: #2563eb; }
+    .val-teal { color: #059669; }
+
+    .sb-table-head {
+      display: flex;
+      align-items: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      padding: 4px 2px 6px;
+      border-bottom: 1px solid #e2e8f0;
+      margin-bottom: 4px;
+    }
+
+    .sb-table-row {
+      display: flex;
+      align-items: center;
+      font-size: 0.76rem;
+      padding: 6px 2px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .sb-table-row:last-child {
+      border-bottom: none;
+    }
+
+    .sb-exec-col-name {
+      flex: 1.6;
+      display: flex;
+      align-items: center;
+      font-weight: 600;
+      color: #1e293b;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .sb-exec-col-adm {
+      width: 45px;
+      text-align: center;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .sb-exec-col-amt {
+      flex: 1.2;
+      text-align: right;
+      font-weight: 700;
+      color: #059669;
+    }
+
+    .sb-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
+      flex-shrink: 0;
+    }
+
+    /* Sort Bar & Controls */
+    .sort-control-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sort-order-btn {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .sort-order-btn:hover {
+      background: #f8fafc;
+    }
+
+    .sortable-th {
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .sortable-th:hover {
+      background: #edf2f7;
+    }
+
+    /* Team Leaderboard Cards */
+    .team-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .team-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .tc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .tc-title {
+      font-size: 0.92rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tc-badge {
+      font-size: 0.7rem;
+      background: #f1f5f9;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .tc-summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: #f8fafc;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 0.75rem;
+    }
+
+    /* Individual Insights Cards */
+    .counselor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .counselor-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+
+    .cc-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .cc-identity {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .cc-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: #4f46e5;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .cc-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .cc-team {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .cc-stats-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      background: #f8fafc;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.75rem;
+    }
+
+    .cc-sections-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .cc-block {
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.75rem;
+    }
+
+    .cc-strengths {
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+    }
+
+    .cc-improvements {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+    }
+
+    .cc-block-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .benchmark-gauge-wrap {
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      font-size: 0.75rem;
+    }
+
+    .gauge-row {
+      margin-bottom: 10px;
+    }
+
+    .gauge-labels {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 600;
+      margin-bottom: 4px;
+      font-size: 0.72rem;
+    }
+
+    .gauge-track {
+      height: 10px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .gauge-fill {
+      height: 100%;
+      border-radius: 99px;
+    }
+
+    .gauge-baseline-pin {
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      width: 2px;
+      background: #000;
+      z-index: 2;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Brand Navigation -->
+  <header class="top-navbar">
+    <div class="brand-group">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>Admissions & Leads Analytics Dashboard</h1>
+        <p>Pipeline Performance, Executive Leaderboard & Revenue Analytics</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-outline" onclick="exportCSV()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        Export CSV
+      </button>
+      <button class="btn btn-primary" onclick="fetchLiveData()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        Sync Now
+      </button>
+    </div>
+  </header>
+
+  <!-- View Switcher Tabs -->
+  <nav class="tab-bar-container">
+    <button class="tab-btn active" onclick="switchTab('executive-overview')">
+      📊 Executive Overview
+    </button>
+    <button class="tab-btn" onclick="switchTab('funnel-conversions')">
+      📈 Funnel & Conversions
+    </button>
+    <button class="tab-btn" onclick="switchTab('channel-sources')">
+      📑 Channel & Sources
+    </button>
+    <button class="tab-btn" onclick="switchTab('team-leaderboard')">
+      👥 Team Leaderboard
+    </button>
+    <button class="tab-btn" onclick="switchTab('first-level-scoreboard')">
+      🏛 First level Admissions Scoreboard
+    </button>
+    <button class="tab-btn" onclick="switchTab('individual-insights')">
+      🎯 Team & Individual Insights
+    </button>
+  </nav>
+
+  <!-- Filter Card -->
+  <div class="filter-card">
+    <div class="filter-row-1">
+      <input type="text" id="searchInput" class="input-search" placeholder="Search records..." oninput="applyFilters()" />
+      
+      <select id="datePreset" class="select-ctrl" onchange="handlePresetChange()">
+        <option value="ALL">All Dates (Preset)</option>
+        <option value="THIS_WEEK">This Week (7 Days)</option>
+        <option value="PREV_WEEK">Previous Week</option>
+        <option value="CURR_MONTH">Current Month</option>
+        <option value="PREV_MONTH">Previous Month</option>
+      </select>
+
+      <input type="date" id="dateFrom" class="date-ctrl" onchange="applyFilters()" />
+      <span style="font-size:0.8rem; color:var(--text-muted);">to</span>
+      <input type="date" id="dateTo" class="date-ctrl" onchange="applyFilters()" />
+
+      <div class="stream-toggle">
+        <button class="active" onclick="setStreamFilter('ALL', this)">All Streams</button>
+        <button onclick="setStreamFilter('Paid', this)">Paid</button>
+        <button onclick="setStreamFilter('Organic', this)">Organic</button>
+      </div>
+
+      <select id="sourceFilter" class="select-ctrl" onchange="applyFilters()">
+        <option value="ALL">All Sources (All)</option>
+      </select>
+
+      <select id="teamFilter" class="select-ctrl" onchange="applyFilters()">
+        <option value="ALL">All Teams (All)</option>
+      </select>
+
+      <select id="execFilter" class="select-ctrl" onchange="applyFilters()">
+        <option value="ALL">All Executives (All)</option>
+      </select>
+    </div>
+
+    <div class="filter-row-2">
+      <div class="quick-filters">
+        <span style="color:var(--text-muted); font-weight:600; margin-right:4px;">Quick Filters:</span>
+        <button class="quick-pill active" onclick="setQuickPill('ALL', this)">All Dates</button>
+        <button class="quick-pill" onclick="setQuickPill('THIS_WEEK', this)">This Week (7 Days)</button>
+        <button class="quick-pill" onclick="setQuickPill('PREV_WEEK', this)">Previous Week</button>
+        <button class="quick-pill" onclick="setQuickPill('CURR_MONTH', this)">Current Month</button>
+        <button class="quick-pill" onclick="setQuickPill('PREV_MONTH', this)">Previous Month</button>
+        <button class="quick-pill" onclick="setQuickPill('LAST_3M', this)">Last 3 Months</button>
+      </div>
+      <div class="status-meta">
+        <span id="displayCount">Displaying: 0 entries</span>
+        <span id="datasetTimeline">Dataset Timeline: ...</span>
+        <span id="syncMeta">● Live Synced</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 Top Summary KPI Cards -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-1">
+      <div class="kpi-header">
+        <span class="kpi-title">Amount Collected</span>
+        <span class="kpi-icon-pill" style="background:#ecfdf5; color:#10b981;">₹</span>
+      </div>
+      <div class="kpi-value" id="kpiAmount">₹0</div>
+      <div class="kpi-subtext">
+        <span class="kpi-badge" style="background:#ecfdf5; color:#10b981;" id="kpiAvgTicket">Avg Ticket: ₹0</span>
+        <span>per admission</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-2">
+      <div class="kpi-header">
+        <span class="kpi-title">Total Admissions</span>
+        <span class="kpi-icon-pill" style="background:#eef2ff; color:#6366f1;">🎖</span>
+      </div>
+      <div class="kpi-value" id="kpiAdmissions">0</div>
+      <div class="kpi-subtext" id="kpiAdmSplit">
+        <span>Fresh: 0</span> • <span>Followup: 0</span> • <span>Ref: 0</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-3">
+      <div class="kpi-header">
+        <span class="kpi-title">Leads & Reachability</span>
+        <span class="kpi-icon-pill" style="background:#cffafe; color:#06b6d4;">📞</span>
+      </div>
+      <div class="kpi-value" id="kpiLeads">0 <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Leads</span></div>
+      <div class="kpi-subtext">
+        <span class="kpi-badge" style="background:#cffafe; color:#0891b2;" id="kpiConnectRate">0.0% Connected</span>
+        <span id="kpiCallsCount">(0 calls)</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-4">
+      <div class="kpi-header">
+        <span class="kpi-title">Quality & Call Duration</span>
+        <span class="kpi-icon-pill" style="background:#fef3c7; color:#f59e0b;">⏱</span>
+      </div>
+      <div class="kpi-value" id="kpiQualRate">0.0% <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Qualification</span></div>
+      <div class="kpi-subtext" id="kpiDurationSub">
+        <span>0 Qualified</span> • <span>0h talk time</span> • <span>0 Re-dials</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-5">
+      <div class="kpi-header">
+        <span class="kpi-title">Admissions / Qualified</span>
+        <span class="kpi-icon-pill" style="background:#f3e8ff; color:#8b5cf6;">🎯</span>
+      </div>
+      <div class="kpi-value" id="kpiAdmQualRate">0.0% <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Qual</span></div>
+      <div class="kpi-subtext" id="kpiAdmQualSub">
+        <span>0 Admissions from 0 Qualified</span>
+      </div>
+    </div>
+
+    <div class="kpi-card kpi-6">
+      <div class="kpi-header">
+        <span class="kpi-title">Admissions / Leads</span>
+        <span class="kpi-icon-pill" style="background:#dbeafe; color:#3b82f6;">📈</span>
+      </div>
+      <div class="kpi-value" id="kpiOverallConversion">0.0% <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Leads</span></div>
+      <div class="kpi-subtext" id="kpiOverallConversionSub">
+        <span>0 Admissions from 0 Leads</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 1: EXECUTIVE OVERVIEW -->
+  <div id="executive-overview" class="view-content active">
+    <div class="dashboard-panel">
+      <div class="panel-header">
+        <h3 class="panel-title">Lead Generation & Revenue Velocity Trend</h3>
+        <p class="panel-subtitle">Chronological performance tracking across active dates (Hover nodes to inspect values)</p>
+      </div>
+
+      <div class="chart-inspector" id="chartInspector">
+        <span>Date: <strong id="inspDate">--</strong></span>
+        <span>Leads: <strong id="inspLeads">--</strong></span>
+        <span>Connected: <strong id="inspConn">--</strong></span>
+        <span>Admissions: <strong id="inspAdm">--</strong></span>
+        <span>Revenue: <strong id="inspRev">--</strong></span>
+      </div>
+
+      <div style="height: 320px; width: 100%;">
+        <canvas id="velocityChart"></canvas>
+      </div>
+    </div>
+
+    <div class="overview-grid-2">
+      <div class="dashboard-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Stream Contribution: Paid vs Organic</h3>
+          <p class="panel-subtitle">Comparison of campaign investment and organic sources</p>
+        </div>
+
+        <div class="stream-box" style="border-left: 4px solid var(--purple);">
+          <div class="stream-box-header">
+            <span>● Paid Stream (Ads & Campaigns)</span>
+            <span id="paidRevenue">₹0</span>
+          </div>
+          <div class="stream-subgrid">
+            <div class="stream-substat"><div class="stream-substat-label">Leads</div><div class="stream-substat-val" id="paidLeads">0</div></div>
+            <div class="stream-substat"><div class="stream-substat-label">Connected</div><div class="stream-substat-val" id="paidConnected">0</div></div>
+            <div class="stream-substat"><div class="stream-substat-label">Admissions</div><div class="stream-substat-val" id="paidAdmissions">0</div></div>
+          </div>
+        </div>
+
+        <div class="stream-box" style="border-left: 4px solid var(--green);">
+          <div class="stream-box-header">
+            <span>● Organic Stream (Inbound, LMS, Social)</span>
+            <span id="organicRevenue">₹0</span>
+          </div>
+          <div class="stream-subgrid">
+            <div class="stream-substat"><div class="stream-substat-label">Leads</div><div class="stream-substat-val" id="organicLeads">0</div></div>
+            <div class="stream-substat"><div class="stream-substat-label">Connected</div><div class="stream-substat-val" id="organicConnected">0</div></div>
+            <div class="stream-substat"><div class="stream-substat-label">Admissions</div><div class="stream-substat-val" id="organicAdmissions">0</div></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-top:14px; font-weight:600; color:var(--text-muted);">
+          <span>Paid Lead Share:</span>
+          <span id="paidLeadShare" style="color:var(--text-main);">0.0%</span>
+        </div>
+      </div>
+
+      <div class="dashboard-panel">
+        <div class="panel-header">
+          <h3 class="panel-title">Top Lead Acquisition Channels</h3>
+          <p class="panel-subtitle">Volume distribution and conversion efficiency by channel</p>
+        </div>
+        <div id="channelBarsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: FUNNEL & CONVERSIONS -->
+  <div id="funnel-conversions" class="view-content">
+    <div class="dashboard-panel">
+      <div class="panel-header">
+        <h3 class="panel-title">Full Pipeline Conversion Funnel</h3>
+        <p class="panel-subtitle">Stage-by-stage tracking from inquiries to admissions</p>
+      </div>
+
+      <div class="funnel-steps">
+        <div class="funnel-step-card" style="border-top: 3px solid #3b82f6;">
+          <div class="step-tag" style="color:#3b82f6;">Step 1 • Inbound Leads</div>
+          <div class="step-val" id="fnLeads">0</div>
+          <p class="step-desc">Total registered prospects across paid & organic streams</p>
+          <span class="step-badge" style="background:#dbeafe; color:#1d4ed8;">100% Top of Funnel</span>
+        </div>
+
+        <div class="funnel-step-card" style="border-top: 3px solid #06b6d4;">
+          <div class="step-tag" style="color:#06b6d4;">Step 2 • Connected Calls</div>
+          <div class="step-val" id="fnConn">0</div>
+          <p class="step-desc">Direct contacts established by counselors</p>
+          <span class="step-badge" style="background:#cffafe; color:#0e7490;" id="fnConnRate">0% Connect Rate</span>
+        </div>
+
+        <div class="funnel-step-card" style="border-top: 3px solid #f59e0b;">
+          <div class="step-tag" style="color:#f59e0b;">Step 3 • Qualified Leads</div>
+          <div class="step-val" id="fnQual">0</div>
+          <p class="step-desc">Prospects screened for course enrollment</p>
+          <span class="step-badge" style="background:#fef3c7; color:#b45309;" id="fnQualRate">0% of Connected</span>
+        </div>
+
+        <div class="funnel-step-card" style="border-top: 3px solid #10b981;">
+          <div class="step-tag" style="color:#10b981;">Step 4 • Admissions</div>
+          <div class="step-val" id="fnAdm">0</div>
+          <p class="step-desc" id="fnAdmFee">Completed enrollments with fee collection: ₹0</p>
+          <span class="step-badge" style="background:#d1fae5; color:#047857;" id="fnOverallRate">0% Overall Conversion</span>
+        </div>
+      </div>
+
+      <div class="panel-header" style="margin-top:20px;">
+        <h4 style="font-size:0.95rem; font-weight:700;">Admissions Distribution</h4>
+      </div>
+      <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">Fresh Admissions</div>
+          <div style="font-size:1.4rem; font-weight:800; margin:4px 0;" id="fnFresh">0</div>
+          <div style="font-size:0.72rem; color:#10b981; font-weight:600;">Direct enrollments</div>
+        </div>
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">Followup Admissions</div>
+          <div style="font-size:1.4rem; font-weight:800; margin:4px 0;" id="fnFollow">0</div>
+          <div style="font-size:0.72rem; color:#3b82f6; font-weight:600;">Followup enrollments</div>
+        </div>
+        <div style="background:#f8fafc; border:1px solid var(--border); border-radius:8px; padding:14px;">
+          <div style="font-size:0.75rem; color:var(--text-muted);">Referral Admissions</div>
+          <div style="font-size:1.4rem; font-weight:800; margin:4px 0;" id="fnRef">0</div>
+          <div style="font-size:0.72rem; color:#8b5cf6; font-weight:600;">Referral enrollments</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CHANNEL & SOURCES -->
+  <div id="channel-sources" class="view-content">
+    <div class="dashboard-panel">
+      <div class="panel-header">
+        <h3 class="panel-title">Source Channel Matrix & Performance</h3>
+        <p class="panel-subtitle">In-depth breakdown of leads, connected calls, and revenue generated per channel</p>
+      </div>
+
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Channel Source</th>
+            <th>Stream</th>
+            <th style="text-align:right;">Leads Count</th>
+            <th style="text-align:right;">Connected Calls</th>
+            <th style="text-align:right;">Connect Rate</th>
+            <th style="text-align:right;">Qualified Leads</th>
+            <th style="text-align:right;">Admissions</th>
+            <th style="text-align:right;">Qualified Conversion</th>
+            <th style="text-align:right;">Conversion Rate</th>
+            <th style="text-align:right;">Amount Collected</th>
+          </tr>
+        </thead>
+        <tbody id="channelMatrixBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: TEAM LEADERBOARD -->
+  <div id="team-leaderboard" class="view-content">
+    <div class="panel-header">
+      <h3 class="panel-title">Team Leads & Team Performance</h3>
+    </div>
+    <div class="team-cards-grid" id="teamCardsContainer" style="margin-bottom:28px;"></div>
+
+    <div class="dashboard-panel">
+      <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div>
+          <h3 class="panel-title">Executive Performance Ranking</h3>
+          <p class="panel-subtitle">Activity, connect metrics, talk duration, and admissions conversion</p>
+        </div>
+        <div class="sort-control-group">
+          <label style="font-size:0.75rem; font-weight:600; color:var(--text-muted);">Sort by:</label>
+          <select id="execSortBy" class="select-ctrl" onchange="renderExecutiveRankingTable()">
+            <option value="amount">Amount Collected (₹)</option>
+            <option value="admissions">Total Admissions</option>
+            <option value="leads">Leads Handled</option>
+            <option value="connected">Connected Calls</option>
+            <option value="qualified">Qualified Leads</option>
+            <option value="connectRate">Connect Rate (%)</option>
+            <option value="duration">Talk Duration</option>
+            <option value="redials">Re-Dial Count</option>
+            <option value="admQual">Admissions / Qualified (%)</option>
+            <option value="convRate">Conversion Rate (Adm / Leads %)</option>
+            <option value="name">Counselor / Executive Name</option>
+            <option value="team">Assigned Team</option>
+          </select>
+          <button class="sort-order-btn" id="sortOrderBtn" onclick="toggleSortDirection()">
+            <span id="sortDirectionText">↓ DESC</span>
+          </button>
+        </div>
+      </div>
+
+      <table class="custom-table">
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th class="sortable-th" onclick="setColumnSort('name')">Counselor / Executive ⇕</th>
+            <th class="sortable-th" onclick="setColumnSort('team')">Assigned Team ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('leads')">Leads ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('connected')">Connected ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('qualified')">Qualified ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('connectRate')">Connect Rate ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('duration')">Talk Duration ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('redials')">Re-Dials ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('admissions')">Admissions ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('admQual')">Adm / Qual % ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('convRate')">Conv. Rate ⇕</th>
+            <th class="sortable-th" style="text-align:right;" onclick="setColumnSort('amount')">Amount Collected ⇕</th>
+          </tr>
+        </thead>
+        <tbody id="execRankingBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: FIRST LEVEL ADMISSIONS SCOREBOARD -->
+  <div id="first-level-scoreboard" class="view-content">
+    <div class="scoreboard-hero">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h2 class="scoreboard-hero-title">First level Admissions Scoreboard</h2>
+          <p class="scoreboard-hero-sub">Team-wise breakdown listing all team executives with their total admissions and revenue collected. Includes total team collection and average daily admissions count & amount divided by the active date filter.</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.06); padding:10px 16px; border-radius:8px; border:1px solid rgba(255,255,255,0.1); font-size:0.75rem; text-align:right;">
+          <div style="color:#f59e0b; font-weight:700;">Date Filter Duration: <span id="sbFilterDuration">30 Days</span></div>
+          <div style="color:#94a3b8; font-size:0.7rem; margin-top:2px;">• Avg Count = Total Admissions ÷ Active Days</div>
+          <div style="color:#94a3b8; font-size:0.7rem;">• Avg Amount = Total Amount ÷ Active Days</div>
+        </div>
+      </div>
+      
+      <div class="scoreboard-hero-stats">
+        <div>
+          <div class="sb-stat-label">Total Admissions</div>
+          <div class="sb-stat-val" id="sbTotalAdm">0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Total Revenue Collected</div>
+          <div class="sb-stat-val" id="sbTotalRev">₹0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Overall Daily Avg Revenue</div>
+          <div class="sb-stat-val" id="sbDailyAvgRev">₹0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Overall Daily Avg Admissions</div>
+          <div class="sb-stat-val" id="sbDailyAvgAdm">0.00</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 8 Distinctly Styled Team Cards Grid -->
+    <div class="scoreboard-grid" id="scoreboardGrid"></div>
+  </div>
+
+  <!-- TAB 6: INDIVIDUAL PERFORMANCE & COACHING INSIGHTS -->
+  <div id="individual-insights" class="view-content">
+    <div class="scoreboard-hero" style="background:#0b1329;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <h2 class="scoreboard-hero-title">Counselor & Executive Performance Insights</h2>
+          <p class="scoreboard-hero-sub">Data-driven diagnosis of individual counselor strengths, closing bottlenecks, and high-impact areas for improvement. Benchmarked against overall team averages to guide 1-on-1 coaching.</p>
+        </div>
+        <div style="background:rgba(255,255,255,0.06); padding:12px 18px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); font-size:0.75rem;">
+          <div style="color:#94a3b8; font-weight:700; margin-bottom:8px;">★ Team Baselines (Benchmark)</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px 16px;">
+            <div>Avg Connect Rate: <strong id="baseConnRate">0.0%</strong></div>
+            <div>Avg Conversion: <strong id="baseConvRate">0.0%</strong></div>
+            <div>Adm / Qualified: <strong id="baseAdmQual">0.0%</strong></div>
+            <div>Avg Ticket Size: <strong id="baseTicket">₹0</strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="scoreboard-hero-stats" style="margin-top:14px;">
+        <div>
+          <div class="sb-stat-label">Total Active Counselors</div>
+          <div class="sb-stat-val" id="inActiveCounselors">0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Counselors with Admissions</div>
+          <div class="sb-stat-val" id="inCounselorsWithAdm">0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Avg Admissions / Counselor</div>
+          <div class="sb-stat-val" id="inAvgAdmCounselor">0.0</div>
+        </div>
+        <div>
+          <div class="sb-stat-label">Avg Revenue / Counselor</div>
+          <div class="sb-stat-val" id="inAvgRevCounselor">₹0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="counselor-grid" id="counselorCardsList"></div>
+  </div>
+
+  <!-- REAL-TIME ENGINE SCRIPT -->
+  <script>
+    const SPREADSHEET_ID = "1Uw_hiDCuNv2CmG4dU4QgbV5fsglh6k8Uv1jt5xqjsCo";
+    const SHEET_NAME = encodeURIComponent("Raw Data for Analysis");
+
+    let allRawData = [];
+    let filteredData = [];
+    let currentStreamFilter = 'ALL';
+    let velocityChartInstance = null;
+
+    let currentSortKey = 'amount';
+    let currentSortOrder = 'desc';
+
+    const fmtInr = (n) => "₹" + Math.round(n || 0).toLocaleString("en-IN");
+    const fmtNum = (n) => Math.round(n || 0).toLocaleString();
+    const fmtPct = (n) => ((n || 0) * 100).toFixed(1) + "%";
+
+    function parseMinutes(val) {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      const str = String(val).toLowerCase();
+      let mins = 0;
+      const hMatch = str.match(/(\d+)\s*(?:hour|hr|h)/);
+      const mMatch = str.match(/(\d+)\s*(?:min|m)/);
+      if (hMatch) mins += parseFloat(hMatch[1]) * 60;
+      if (mMatch) mins += parseFloat(mMatch[1]);
+      if (!hMatch && !mMatch) {
+        const clean = parseFloat(str.replace(/[^0-9.]/g, ''));
+        if (!isNaN(clean)) mins += clean;
+      }
+      return mins;
+    }
+
+    function parseAmount(val) {
+      if (!val) return 0;
+      if (typeof val === 'number') return val;
+      const clean = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
+      return isNaN(clean) ? 0 : clean;
+    }
+
+    function parseDate(val) {
+      if (!val) return null;
+      let d = new Date(val);
+      if (!isNaN(d.getTime())) return d;
+      const parts = String(val).trim().split(' ');
+      if (parts.length === 3) {
+        d = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
+        if (!isNaN(d.getTime())) return d;
+      }
+      return null;
+    }
+
+    function getActiveFilterDays() {
+      const fromVal = document.getElementById('dateFrom').value;
+      const toVal = document.getElementById('dateTo').value;
+      if (fromVal && toVal) {
+        const diffTime = Math.abs(new Date(toVal) - new Date(fromVal));
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+        return Math.max(diffDays, 1);
+      }
+      const timestamps = filteredData.map(r => r.date ? r.date.getTime() : null).filter(Boolean);
+      if (timestamps.length > 0) {
+        const minD = Math.min(...timestamps);
+        const maxD = Math.max(...timestamps);
+        const diffDays = Math.ceil((maxD - minD) / (1000 * 60 * 60 * 24)) + 1;
+        return Math.max(diffDays, 1);
+      }
+      return 30;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
+
+      event.currentTarget.classList.add('active');
+      const target = document.getElementById(tabId);
+      if (target) target.classList.add('active');
+
+      if (tabId === 'executive-overview' && velocityChartInstance) {
+        velocityChartInstance.resize();
+      }
+    }
+
+    // JSONP Script Injection to Bypass Browser Local CORS Limits
+    function fetchLiveData() {
+      const syncMeta = document.getElementById("syncMeta");
+      if (syncMeta) syncMeta.innerText = "● Syncing...";
+
+      const existingScript = document.getElementById("gviz_jsonp_tag");
+      if (existingScript) existingScript.remove();
+
+      const script = document.createElement("script");
+      script.id = "gviz_jsonp_tag";
+      script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:handleGvizResponse&sheet=${SHEET_NAME}&_cacheBust=${Date.now()}`;
+      
+      script.onerror = function() {
+        if (syncMeta) syncMeta.innerText = "● Connection Failed: Check Sheet Sharing";
+        alert("Unable to fetch data from Google Sheets.\n\nPlease verify:\n1. The sheet is set to 'Anyone with the link can view'.\n2. The tab name is exactly 'Raw Data for Analysis'.");
+      };
+
+      document.body.appendChild(script);
+    }
+
+    // GVIZ Callback
+    window.handleGvizResponse = function(response) {
+      try {
+        if (!response || !response.table) {
+          throw new Error("Invalid GVIZ table response");
+        }
+
+        const table = response.table;
+        let dataRows = table.rows;
+        if (!dataRows || dataRows.length === 0) {
+          document.getElementById("syncMeta").innerText = "● No Rows Found";
+          return;
+        }
+
+        let colMap = {};
+        const hasColLabels = table.cols.some(c => c && c.label && c.label.trim() !== "");
+
+        if (hasColLabels) {
+          table.cols.forEach((c, idx) => {
+            if (c && c.label) colMap[c.label.trim().toLowerCase()] = idx;
+          });
+        } else {
+          dataRows[0].c.forEach((cell, idx) => {
+            const val = cell ? String(cell.v || cell.f || "").trim().toLowerCase() : "";
+            if (val) colMap[val] = idx;
+          });
+          dataRows = dataRows.slice(1);
+        }
+
+        function getVal(row, name, fallbackIdx) {
+          let idx = colMap[name.toLowerCase()];
+          if (idx === undefined) idx = fallbackIdx;
+          if (!row.c || !row.c[idx]) return null;
+          return row.c[idx].f !== undefined ? row.c[idx].f : row.c[idx].v;
+        }
+
+        allRawData = dataRows.map(r => {
+          const rawDate = getVal(r, "Date", 0);
+          return {
+            date: parseDate(rawDate),
+            rawDate: rawDate,
+            source: (getVal(r, "Select Source", 1) || "Other").toString().trim(),
+            leads: parseFloat(getVal(r, "Leads Count", 2)) || 0,
+            connected: parseFloat(getVal(r, "Connected Calls", 3)) || 0,
+            qualified: parseFloat(getVal(r, "Qualified Leads", 4)) || 0,
+            fresh: parseFloat(getVal(r, "Fresh Admissions", 5)) || 0,
+            followup: parseFloat(getVal(r, "Followup Admissions", 6)) || 0,
+            referral: parseFloat(getVal(r, "Referral Admissions", 7)) || 0,
+            amount: parseAmount(getVal(r, "Amount Collected", 8)),
+            duration: parseMinutes(getVal(r, "Call Duration", 9)),
+            redials: parseFloat(getVal(r, "Re Dial Count", 10)) || 0,
+            executive: (getVal(r, "Executives", 11) || "Unassigned").toString().trim(),
+            team: (getVal(r, "Team Lead", 12) || "No TL Found").toString().trim(),
+            stream: (getVal(r, "Stream", 13) || "Organic").toString().trim()
+          };
+        });
+
+        populateDropdowns();
+        applyFilters();
+
+        const syncMeta = document.getElementById("syncMeta");
+        if (syncMeta) syncMeta.innerText = `● Live Synced (${new Date().toLocaleTimeString()})`;
+      } catch (err) {
+        console.error("Data processing failed:", err);
+        const syncMeta = document.getElementById("syncMeta");
+        if (syncMeta) syncMeta.innerText = "● Parsing Error";
+      }
+    };
+
+    function populateDropdowns() {
+      const sources = new Set();
+      const teams = new Set();
+      const execs = new Set();
+
+      allRawData.forEach(r => {
+        if (r.source) sources.add(r.source);
+        if (r.team) teams.add(r.team);
+        if (r.executive) execs.add(r.executive);
+      });
+
+      const sSelect = document.getElementById("sourceFilter");
+      sSelect.innerHTML = `<option value="ALL">All Sources (${sources.size})</option>`;
+      Array.from(sources).sort().forEach(s => sSelect.innerHTML += `<option value="${s}">${s}</option>`);
+
+      const tSelect = document.getElementById("teamFilter");
+      tSelect.innerHTML = `<option value="ALL">All Teams (${teams.size})</option>`;
+      Array.from(teams).sort().forEach(t => tSelect.innerHTML += `<option value="${t}">${t}</option>`);
+
+      const eSelect = document.getElementById("execFilter");
+      eSelect.innerHTML = `<option value="ALL">All Executives (${execs.size})</option>`;
+      Array.from(execs).sort().forEach(e => eSelect.innerHTML += `<option value="${e}">${e}</option>`);
+    }
+
+    function setStreamFilter(val, el) {
+      currentStreamFilter = val;
+      document.querySelectorAll('.stream-toggle button').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      applyFilters();
+    }
+
+    function setQuickPill(preset, el) {
+      document.querySelectorAll('.quick-pill').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('datePreset').value = preset;
+      handlePresetChange();
+    }
+
+    function handlePresetChange() {
+      const val = document.getElementById('datePreset').value;
+      const today = new Date();
+      let start = null, end = null;
+
+      if (val === 'THIS_WEEK') {
+        start = new Date();
+        start.setDate(today.getDate() - 7);
+        end = today;
+      } else if (val === 'PREV_WEEK') {
+        start = new Date();
+        start.setDate(today.getDate() - 14);
+        end = new Date();
+        end.setDate(today.getDate() - 7);
+      } else if (val === 'CURR_MONTH') {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = today;
+      } else if (val === 'PREV_MONTH') {
+        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 0);
+      } else if (val === 'LAST_3M') {
+        start = new Date();
+        start.setMonth(today.getMonth() - 3);
+        end = today;
+      }
+
+      document.getElementById('dateFrom').value = start ? start.toISOString().split('T')[0] : '';
+      document.getElementById('dateTo').value = end ? end.toISOString().split('T')[0] : '';
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const search = (document.getElementById('searchInput').value || "").toLowerCase();
+      const from = document.getElementById('dateFrom').value ? new Date(document.getElementById('dateFrom').value) : null;
+      const to = document.getElementById('dateTo').value ? new Date(document.getElementById('dateTo').value) : null;
+      if (to) to.setHours(23,59,59,999);
+
+      const source = document.getElementById('sourceFilter').value;
+      const team = document.getElementById('teamFilter').value;
+      const exec = document.getElementById('execFilter').value;
+
+      filteredData = allRawData.filter(r => {
+        if (search && !r.executive.toLowerCase().includes(search) && !r.team.toLowerCase().includes(search) && !r.source.toLowerCase().includes(search)) return false;
+        if (from && r.date && r.date < from) return false;
+        if (to && r.date && r.date > to) return false;
+        if (currentStreamFilter !== 'ALL' && r.stream.toLowerCase() !== currentStreamFilter.toLowerCase()) return false;
+        if (source !== 'ALL' && r.source !== source) return false;
+        if (team !== 'ALL' && r.team !== team) return false;
+        if (exec !== 'ALL' && r.executive !== exec) return false;
+        return true;
+      });
+
+      document.getElementById('displayCount').innerText = `Displaying: ${filteredData.length} of ${allRawData.length} total entries`;
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      renderTopKPIs();
+      renderExecutiveOverview();
+      renderFunnel();
+      renderChannelMatrix();
+      renderTeamLeaderboard();
+      renderScoreboard();
+      renderIndividualInsights();
+    }
+
+    function renderTopKPIs() {
+      let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amount = 0, dur = 0, redials = 0;
+      
+      filteredData.forEach(r => {
+        leads += r.leads;
+        conn += r.connected;
+        qual += r.qualified;
+        fresh += r.fresh;
+        follow += r.followup;
+        ref += r.referral;
+        amount += r.amount;
+        dur += r.duration;
+        redials += r.redials;
+      });
+
+      const admissions = fresh + follow + ref;
+      const avgTicket = admissions > 0 ? (amount / admissions) : 0;
+      const connectRate = leads > 0 ? (conn / leads) : 0;
+      const qualRate = conn > 0 ? (qual / conn) : 0;
+      const admQualRate = qual > 0 ? (admissions / qual) : 0;
+      const overallConversion = leads > 0 ? (admissions / leads) : 0;
+
+      document.getElementById('kpiAmount').innerText = fmtInr(amount);
+      document.getElementById('kpiAvgTicket').innerText = `Avg Ticket: ${fmtInr(avgTicket)}`;
+      document.getElementById('kpiAdmissions').innerText = fmtNum(admissions);
+      document.getElementById('kpiAdmSplit').innerHTML = `<span>Fresh: ${fresh}</span> • <span>Followup: ${follow}</span> • <span>Ref: ${ref}</span>`;
+      document.getElementById('kpiLeads').innerHTML = `${fmtNum(leads)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Leads</span>`;
+      document.getElementById('kpiConnectRate').innerText = `${fmtPct(connectRate)} Connected`;
+      document.getElementById('kpiCallsCount').innerText = `(${fmtNum(conn)} calls)`;
+      document.getElementById('kpiQualRate').innerHTML = `${fmtPct(qualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Qualification</span>`;
+      document.getElementById('kpiDurationSub').innerHTML = `<span>${fmtNum(qual)} Qualified</span> • <span>${Math.round(dur/60)}h talk time</span> • <span>${fmtNum(redials)} Re-dials</span>`;
+      document.getElementById('kpiAdmQualRate').innerHTML = `${fmtPct(admQualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Qual</span>`;
+      document.getElementById('kpiAdmQualSub').innerText = `${admissions} Admissions from ${qual} Qualified`;
+      document.getElementById('kpiOverallConversion').innerHTML = `${fmtPct(overallConversion)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Leads</span>`;
+      document.getElementById('kpiOverallConversionSub').innerText = `${admissions} Admissions from ${fmtNum(leads)} Leads`;
+    }
+
+    function renderExecutiveOverview() {
+      const dateMap = {};
+      let paidLeads = 0, paidConn = 0, paidAdm = 0, paidAmt = 0;
+      let orgLeads = 0, orgConn = 0, orgAdm = 0, orgAmt = 0;
+
+      filteredData.forEach(r => {
+        const dStr = r.date ? r.date.toISOString().split('T')[0] : (r.rawDate || 'Unknown');
+        if (!dateMap[dStr]) {
+          dateMap[dStr] = { date: dStr, leads: 0, connected: 0, admissions: 0, amount: 0, redials: 0 };
+        }
+        dateMap[dStr].leads += r.leads;
+        dateMap[dStr].connected += r.connected;
+        const adm = r.fresh + r.followup + r.referral;
+        dateMap[dStr].admissions += adm;
+        dateMap[dStr].amount += r.amount;
+        dateMap[dStr].redials += r.redials;
+
+        if (r.stream.toLowerCase() === 'paid') {
+          paidLeads += r.leads; paidConn += r.connected; paidAdm += adm; paidAmt += r.amount;
+        } else {
+          orgLeads += r.leads; orgConn += r.connected; orgAdm += adm; orgAmt += r.amount;
+        }
+      });
+
+      document.getElementById('paidRevenue').innerText = fmtInr(paidAmt);
+      document.getElementById('paidLeads').innerText = fmtNum(paidLeads);
+      document.getElementById('paidConnected').innerText = fmtNum(paidConn);
+      document.getElementById('paidAdmissions').innerText = fmtNum(paidAdm);
+
+      document.getElementById('organicRevenue').innerText = fmtInr(orgAmt);
+      document.getElementById('organicLeads').innerText = fmtNum(orgLeads);
+      document.getElementById('organicConnected').innerText = fmtNum(orgConn);
+      document.getElementById('organicAdmissions').innerText = fmtNum(orgAdm);
+
+      const totalL = paidLeads + orgLeads;
+      document.getElementById('paidLeadShare').innerText = totalL > 0 ? fmtPct(paidLeads / totalL) : "0.0%";
+
+      const sortedDates = Object.keys(dateMap).sort();
+      const labels = sortedDates.map(d => d.slice(5));
+      const leadsData = sortedDates.map(d => dateMap[d].leads);
+      const connData = sortedDates.map(d => dateMap[d].connected);
+      const revData = sortedDates.map(d => dateMap[d].amount / 1000);
+
+      const ctx = document.getElementById('velocityChart').getContext('2d');
+      if (velocityChartInstance) velocityChartInstance.destroy();
+
+      velocityChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Amount Collected (Right Axis - ₹k)',
+              data: revData,
+              backgroundColor: 'rgba(16, 185, 129, 0.45)',
+              borderRadius: 4,
+              yAxisID: 'yRev'
+            },
+            {
+              type: 'line',
+              label: 'Leads (Left Axis)',
+              data: leadsData,
+              borderColor: '#6366f1',
+              backgroundColor: '#6366f1',
+              tension: 0.35,
+              pointRadius: 3,
+              yAxisID: 'yCount'
+            },
+            {
+              type: 'line',
+              label: 'Connected Calls',
+              data: connData,
+              borderColor: '#06b6d4',
+              backgroundColor: '#06b6d4',
+              borderDash: [4, 4],
+              tension: 0.35,
+              pointRadius: 2,
+              yAxisID: 'yCount'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10 } } },
+            tooltip: {
+              callbacks: {
+                afterBody: (items) => {
+                  const idx = items[0].dataIndex;
+                  const dObj = dateMap[sortedDates[idx]];
+                  document.getElementById('inspDate').innerText = dObj.date;
+                  document.getElementById('inspLeads').innerText = dObj.leads;
+                  document.getElementById('inspConn').innerText = dObj.connected;
+                  document.getElementById('inspAdm').innerText = dObj.admissions;
+                  document.getElementById('inspRev').innerText = fmtInr(dObj.amount);
+                  return '';
+                }
+              }
+            }
+          },
+          scales: {
+            yCount: { position: 'left', grid: { color: '#f1f5f9' }, title: { display: true, text: 'Call & Lead Volume', font: { size: 10 } } },
+            yRev: { position: 'right', grid: { display: false }, ticks: { callback: v => `₹${v}k` }, title: { display: true, text: 'Revenue (₹)', font: { size: 10 } } },
+            x: { grid: { display: false } }
+          }
+        }
+      });
+
+      const chMap = {};
+      filteredData.forEach(r => {
+        if (!chMap[r.source]) chMap[r.source] = { leads: 0, amount: 0, stream: r.stream };
+        chMap[r.source].leads += r.leads;
+        chMap[r.source].amount += r.amount;
+      });
+
+      const chSorted = Object.entries(chMap).sort((a,b) => b[1].leads - a[1].leads);
+      const maxL = chSorted.length > 0 ? chSorted[0][1].leads : 1;
+      
+      const barsHtml = chSorted.map(([src, d]) => `
+        <div class="channel-row">
+          <div class="channel-name" title="${src}">${src} <span class="tag-pill ${d.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${d.stream}</span></div>
+          <div class="channel-bar-wrap">
+            <div class="channel-bar-fill" style="width: ${(d.leads / maxL) * 100}%;"></div>
+          </div>
+          <div class="channel-metrics">
+            <strong>${fmtNum(d.leads)}</strong> Leads • <span style="color:#10b981; font-weight:600;">${fmtInr(d.amount)}</span>
+          </div>
+        </div>
+      `).join("");
+      document.getElementById('channelBarsList').innerHTML = barsHtml;
+    }
+
+    function renderFunnel() {
+      let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amt = 0;
+      filteredData.forEach(r => {
+        leads += r.leads; conn += r.connected; qual += r.qualified;
+        fresh += r.fresh; follow += r.followup; ref += r.referral;
+        amt += r.amount;
+      });
+      const admissions = fresh + follow + ref;
+
+      document.getElementById('fnLeads').innerText = fmtNum(leads);
+      document.getElementById('fnConn').innerText = fmtNum(conn);
+      document.getElementById('fnQual').innerText = fmtNum(qual);
+      document.getElementById('fnAdm').innerText = fmtNum(admissions);
+      document.getElementById('fnAdmFee').innerText = `Completed enrollments with fee collection: ${fmtInr(amt)}`;
+
+      document.getElementById('fnConnRate').innerText = `${leads > 0 ? fmtPct(conn / leads) : '0%'} Connect Rate`;
+      document.getElementById('fnQualRate').innerText = `${conn > 0 ? fmtPct(qual / conn) : '0%'} of Connected`;
+      document.getElementById('fnOverallRate').innerText = `${leads > 0 ? fmtPct(admissions / leads) : '0%'} Overall Conversion`;
+
+      document.getElementById('fnFresh').innerText = fresh;
+      document.getElementById('fnFollow').innerText = follow;
+      document.getElementById('fnRef').innerText = ref;
+    }
+
+    function renderChannelMatrix() {
+      const srcMap = {};
+      filteredData.forEach(r => {
+        if (!srcMap[r.source]) {
+          srcMap[r.source] = { source: r.source, stream: r.stream, leads: 0, conn: 0, qual: 0, adm: 0, amt: 0 };
+        }
+        srcMap[r.source].leads += r.leads;
+        srcMap[r.source].conn += r.connected;
+        srcMap[r.source].qual += r.qualified;
+        srcMap[r.source].adm += (r.fresh + r.followup + r.referral);
+        srcMap[r.source].amt += r.amount;
+      });
+
+      const rows = Object.values(srcMap).sort((a,b) => b.leads - a.leads);
+      const html = rows.map(r => `
+        <tr>
+          <td style="font-weight:600;">${r.source}</td>
+          <td><span class="tag-pill ${r.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${r.stream}</span></td>
+          <td style="text-align:right;">${fmtNum(r.leads)}</td>
+          <td style="text-align:right;">${fmtNum(r.conn)}</td>
+          <td style="text-align:right; font-weight:600; color:#3b82f6;">${r.leads > 0 ? fmtPct(r.conn / r.leads) : '0.0%'}</td>
+          <td style="text-align:right;">${fmtNum(r.qual)}</td>
+          <td style="text-align:right; font-weight:700;">${r.adm}</td>
+          <td style="text-align:right; color:#8b5cf6;">${r.qual > 0 ? fmtPct(r.adm / r.qual) : '0.0%'}</td>
+          <td style="text-align:right;">${r.leads > 0 ? fmtPct(r.adm / r.leads) : '0.0%'}</td>
+          <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(r.amt)}</td>
+        </tr>
+      `).join("");
+      document.getElementById('channelMatrixBody').innerHTML = html;
+    }
+
+    // Colors matching canvas scoreboard cards exactly
+    const TEAM_THEMES = [
+      { rank: '#1', rankBg: '#f59e0b', badgeBg: '#fef3c7', badgeColor: '#b45309', dot: '#f59e0b' },
+      { rank: '#2', rankBg: '#2563eb', badgeBg: '#dbeafe', badgeColor: '#1d4ed8', dot: '#2563eb' },
+      { rank: '#3', rankBg: '#10b981', badgeBg: '#d1fae5', badgeColor: '#047857', dot: '#10b981' },
+      { rank: '#4', rankBg: '#8b5cf6', badgeBg: '#ede9fe', badgeColor: '#6d28d9', dot: '#8b5cf6' },
+      { rank: '#5', rankBg: '#f43f5e', badgeBg: '#ffe4e6', badgeColor: '#be123c', dot: '#f43f5e' },
+      { rank: '#6', rankBg: '#0ea5e9', badgeBg: '#e0f2fe', badgeColor: '#0369a1', dot: '#0ea5e9' },
+      { rank: '#7', rankBg: '#c026d3', badgeBg: '#fae8ff', badgeColor: '#86198f', dot: '#c026d3' },
+      { rank: '#8', rankBg: '#0d9488', badgeBg: '#ccfbf1', badgeColor: '#0f766e', dot: '#0d9488' }
+    ];
+
+    function renderScoreboard() {
+      const filterDays = getActiveFilterDays();
+      const durLabel = document.getElementById('sbFilterDuration');
+      if (durLabel) durLabel.innerText = `${filterDays} Days`;
+
+      let totalAdm = 0, totalRev = 0;
+      const teamMap = {};
+
+      filteredData.forEach(r => {
+        const adm = r.fresh + r.followup + r.referral;
+        totalAdm += adm;
+        totalRev += r.amount;
+
+        if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, adm: 0, amount: 0, execs: {} };
+        teamMap[r.team].adm += adm;
+        teamMap[r.team].amount += r.amount;
+
+        if (!teamMap[r.team].execs[r.executive]) {
+          teamMap[r.team].execs[r.executive] = { name: r.executive, adm: 0, amount: 0 };
+        }
+        teamMap[r.team].execs[r.executive].adm += adm;
+        teamMap[r.team].execs[r.executive].amount += r.amount;
+      });
+
+      document.getElementById('sbTotalAdm').innerText = totalAdm;
+      document.getElementById('sbTotalRev').innerText = fmtInr(totalRev);
+      document.getElementById('sbDailyAvgRev').innerText = fmtInr(totalRev / filterDays);
+      document.getElementById('sbDailyAvgAdm').innerText = (totalAdm / filterDays).toFixed(2);
+
+      const teamSorted = Object.values(teamMap).sort((a,b) => b.amount - a.amount);
+      const grid = document.getElementById('scoreboardGrid');
+
+      grid.innerHTML = teamSorted.map((t, idx) => {
+        const theme = TEAM_THEMES[idx % TEAM_THEMES.length];
+        const execList = Object.values(t.execs).sort((a,b) => b.amount - a.amount);
+
+        return `
+          <div class="sb-card">
+            <div class="sb-card-header">
+              <div class="sb-card-title-group">
+                <span class="sb-rank-badge" style="background:${theme.rankBg};">#${idx + 1}</span>
+                <span class="sb-team-name" title="${t.name}">${t.name}</span>
+              </div>
+              <span class="sb-exec-badge" style="background:${theme.badgeBg}; color:${theme.badgeColor};">
+                ${execList.length} Executives
+              </span>
+            </div>
+
+            <div class="sb-stats-grid">
+              <div class="sb-stat-tile">
+                <div class="sb-tile-label">TOTAL ADM</div>
+                <div class="sb-tile-val val-dark">${t.adm}</div>
+              </div>
+              <div class="sb-stat-tile">
+                <div class="sb-tile-label">TOTAL AMOUNT</div>
+                <div class="sb-tile-val val-green">${fmtInr(t.amount)}</div>
+              </div>
+              <div class="sb-stat-tile">
+                <div class="sb-tile-label">AVG ADM / DAY</div>
+                <div class="sb-tile-val val-blue">${(t.adm / filterDays).toFixed(2)}/d</div>
+              </div>
+              <div class="sb-stat-tile">
+                <div class="sb-tile-label">AVG AMOUNT / DAY</div>
+                <div class="sb-tile-val val-teal">${fmtInr(t.amount / filterDays)}/d</div>
+              </div>
+            </div>
+
+            <div class="sb-table-head">
+              <span style="flex:1.6;">Executive</span>
+              <span style="width:45px; text-align:center;">Adm</span>
+              <span style="flex:1.2; text-align:right;">Amount</span>
+            </div>
+
+            <div>
+              ${execList.map(e => `
+                <div class="sb-table-row">
+                  <span class="sb-exec-col-name" title="${e.name}">
+                    <span class="sb-dot" style="background:${theme.dot};"></span>
+                    ${e.name}
+                  </span>
+                  <span class="sb-exec-col-adm">${e.adm}</span>
+                  <span class="sb-exec-col-amt">${fmtInr(e.amount)}</span>
+                </div>
+              `).join("")}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function toggleSortDirection() {
+      currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+      document.getElementById('sortDirectionText').innerText = currentSortOrder === 'desc' ? '↓ DESC' : '↑ ASC';
+      renderExecutiveRankingTable();
+    }
+
+    function setColumnSort(colKey) {
+      if (currentSortKey === colKey) {
+        toggleSortDirection();
+      } else {
+        currentSortKey = colKey;
+        currentSortOrder = 'desc';
+        document.getElementById('execSortBy').value = colKey;
+        document.getElementById('sortDirectionText').innerText = '↓ DESC';
+        renderExecutiveRankingTable();
+      }
+    }
+
+    function renderExecutiveRankingTable() {
+      currentSortKey = document.getElementById('execSortBy').value;
+
+      const execMap = {};
+      filteredData.forEach(r => {
+        if (!execMap[r.executive]) {
+          execMap[r.executive] = { 
+            name: r.executive, 
+            team: r.team, 
+            leads: 0, 
+            connected: 0, 
+            qualified: 0, 
+            duration: 0, 
+            redials: 0, 
+            adm: 0, 
+            amount: 0 
+          };
+        }
+        execMap[r.executive].leads += r.leads;
+        execMap[r.executive].connected += r.connected;
+        execMap[r.executive].qualified += r.qualified;
+        execMap[r.executive].duration += r.duration;
+        execMap[r.executive].redials += r.redials;
+        execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
+        execMap[r.executive].amount += r.amount;
+      });
+
+      let execs = Object.values(execMap);
+
+      execs.sort((a, b) => {
+        let valA, valB;
+        switch (currentSortKey) {
+          case 'amount': valA = a.amount; valB = b.amount; break;
+          case 'admissions': valA = a.adm; valB = b.adm; break;
+          case 'leads': valA = a.leads; valB = b.leads; break;
+          case 'connected': valA = a.connected; valB = b.connected; break;
+          case 'qualified': valA = a.qualified; valB = b.qualified; break;
+          case 'connectRate': 
+            valA = a.leads > 0 ? (a.connected / a.leads) : 0; 
+            valB = b.leads > 0 ? (b.connected / b.leads) : 0; 
+            break;
+          case 'duration': valA = a.duration; valB = b.duration; break;
+          case 'redials': valA = a.redials; valB = b.redials; break;
+          case 'admQual': 
+            valA = a.qualified > 0 ? (a.adm / a.qualified) : 0; 
+            valB = b.qualified > 0 ? (b.adm / b.qualified) : 0; 
+            break;
+          case 'convRate': 
+            valA = a.leads > 0 ? (a.adm / a.leads) : 0; 
+            valB = b.leads > 0 ? (b.adm / b.leads) : 0; 
+            break;
+          case 'name': return currentSortOrder === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+          case 'team': return currentSortOrder === 'desc' ? b.team.localeCompare(a.team) : a.team.localeCompare(b.team);
+          default: valA = a.amount; valB = b.amount;
+        }
+
+        return currentSortOrder === 'desc' ? valB - valA : valA - valB;
+      });
+
+      const execHtml = execs.map((e, idx) => {
+        const cRate = e.leads > 0 ? (e.connected / e.leads) : 0;
+        const qConv = e.qualified > 0 ? (e.adm / e.qualified) : 0;
+        const oConv = e.leads > 0 ? (e.adm / e.leads) : 0;
+        const hrs = Math.floor(e.duration / 60);
+        const mins = Math.round(e.duration % 60);
+
+        return `
+          <tr>
+            <td><strong style="display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; background:#f1f5f9; border-radius:50%; font-size:0.75rem;">${idx + 1}</strong></td>
+            <td style="font-weight:700;">${e.name}</td>
+            <td style="color:var(--text-muted); font-size:0.78rem;">${e.team}</td>
+            <td style="text-align:right;">${fmtNum(e.leads)}</td>
+            <td style="text-align:right;">${fmtNum(e.connected)}</td>
+            <td style="text-align:right;">${fmtNum(e.qualified)}</td>
+            <td style="text-align:right; font-weight:600; color:#3b82f6;">${fmtPct(cRate)}</td>
+            <td style="text-align:right;">${hrs}h ${mins}m</td>
+            <td style="text-align:right;">${fmtNum(e.redials)}</td>
+            <td style="text-align:right; font-weight:700; color:#10b981;">${e.adm}</td>
+            <td style="text-align:right; color:#8b5cf6;">${fmtPct(qConv)}</td>
+            <td style="text-align:right;">${fmtPct(oConv)}</td>
+            <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(e.amount)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      document.getElementById('execRankingBody').innerHTML = execHtml;
+    }
+
+    function renderTeamLeaderboard() {
+      const teamMap = {};
+      filteredData.forEach(r => {
+        if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, leads: 0, adm: 0, amount: 0, execs: new Set() };
+        teamMap[r.team].leads += r.leads;
+        teamMap[r.team].adm += (r.fresh + r.followup + r.referral);
+        teamMap[r.team].amount += r.amount;
+        teamMap[r.team].execs.add(r.executive);
+      });
+
+      const cardsHtml = Object.values(teamMap).map(t => {
+        const conv = t.leads > 0 ? fmtPct(t.adm / t.leads) : "0.0%";
+        return `
+          <div class="team-card">
+            <div class="tc-header">
+              <span class="tc-title">${t.name}</span>
+              <span class="tc-badge">${t.execs.size} Executives</span>
+            </div>
+            <div class="tc-summary">
+              <div>Leads Handled: <strong>${fmtNum(t.leads)}</strong></div>
+              <div>Admissions: <strong>${t.adm}</strong></div>
+              <div>Collected: <strong>${fmtInr(t.amount)}</strong></div>
+              <div>Conv. Rate: <strong>${conv}</strong></div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between; border-top:1px solid var(--border-subtle); padding-top:8px;">
+              <span>Total Amount Collected:</span>
+              <strong style="color:#10b981;">${fmtInr(t.amount)}</strong>
+            </div>
+          </div>
+        `;
+      }).join("");
+      document.getElementById('teamCardsContainer').innerHTML = cardsHtml;
+
+      renderExecutiveRankingTable();
+    }
+
+    function renderIndividualInsights() {
+      let gLeads = 0, gConn = 0, gQual = 0, gAdm = 0, gAmt = 0;
+      filteredData.forEach(r => {
+        gLeads += r.leads; gConn += r.connected; gQual += r.qualified;
+        gAdm += (r.fresh + r.followup + r.referral);
+        gAmt += r.amount;
+      });
+
+      const baseConnect = gLeads > 0 ? (gConn / gLeads) : 0;
+      const baseConversion = gLeads > 0 ? (gAdm / gLeads) : 0;
+      const baseAdmQual = gQual > 0 ? (gAdm / gQual) : 0;
+      const baseTicket = gAdm > 0 ? (gAmt / gAdm) : 0;
+
+      document.getElementById('baseConnRate').innerText = fmtPct(baseConnect);
+      document.getElementById('baseConvRate').innerText = fmtPct(baseConversion);
+      document.getElementById('baseAdmQual').innerText = fmtPct(baseAdmQual);
+      document.getElementById('baseTicket').innerText = fmtInr(baseTicket);
+
+      const execMap = {};
+      filteredData.forEach(r => {
+        if (!execMap[r.executive]) {
+          execMap[r.executive] = { name: r.executive, team: r.team, leads: 0, conn: 0, qual: 0, adm: 0, amount: 0, redials: 0, duration: 0 };
+        }
+        execMap[r.executive].leads += r.leads;
+        execMap[r.executive].conn += r.connected;
+        execMap[r.executive].qual += r.qualified;
+        execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
+        execMap[r.executive].amount += r.amount;
+        execMap[r.executive].redials += r.redials;
+        execMap[r.executive].duration += r.duration;
+      });
+
+      const counselors = Object.values(execMap).sort((a,b) => b.amount - a.amount);
+      const activeCount = counselors.length;
+      const withAdmCount = counselors.filter(c => c.adm > 0).length;
+
+      document.getElementById('inActiveCounselors').innerText = activeCount;
+      document.getElementById('inCounselorsWithAdm').innerText = withAdmCount;
+      document.getElementById('inAvgAdmCounselor').innerText = activeCount > 0 ? (gAdm / activeCount).toFixed(1) : 0;
+      document.getElementById('inAvgRevCounselor').innerText = activeCount > 0 ? fmtInr(gAmt / activeCount) : "₹0";
+
+      const html = counselors.map((c, idx) => {
+        const cRate = c.leads > 0 ? (c.conn / c.leads) : 0;
+        const convRate = c.leads > 0 ? (c.adm / c.leads) : 0;
+        const qRate = c.conn > 0 ? (c.qual / c.conn) : 0;
+        const diffConnect = ((cRate - baseConnect) * 100).toFixed(1);
+        const diffConv = ((convRate - baseConversion) * 100).toFixed(1);
+
+        return `
+          <div class="counselor-card">
+            <div class="cc-header">
+              <div class="cc-identity">
+                <div class="cc-avatar">${c.name.charAt(0)}</div>
+                <div>
+                  <div class="cc-name">${c.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">#${idx+1}</span></div>
+                  <div class="cc-team">${c.team} • ${c.leads} Assigned Leads</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <span class="tc-badge" style="background:#e0f2fe; color:#0369a1;">📞 ${c.conn} Connected</span>
+                <span class="tc-badge" style="background:#ede9fe; color:#6d28d9;">🎯 ${c.qual} Qualified</span>
+              </div>
+            </div>
+
+            <div class="cc-stats-4">
+              <div>Total Admissions<br><strong style="font-size:1.1rem;">${c.adm}</strong></div>
+              <div>Amount Collected<br><strong style="font-size:1.1rem; color:#10b981;">${fmtInr(c.amount)}</strong></div>
+              <div>Connect Rate<br><strong style="font-size:1.1rem;">${fmtPct(cRate)}</strong> <span style="font-size:0.65rem; color:${diffConnect >= 0 ? '#10b981' : '#ef4444'}">${diffConnect >= 0 ? '+' : ''}${diffConnect}%</span></div>
+              <div>Conversion Rate<br><strong style="font-size:1.1rem;">${fmtPct(convRate)}</strong> <span style="font-size:0.65rem; color:${diffConv >= 0 ? '#10b981' : '#ef4444'}">${diffConv >= 0 ? '+' : ''}${diffConv}%</span></div>
+            </div>
+
+            <div class="cc-sections-2">
+              <div class="cc-block cc-strengths">
+                <div class="cc-block-title" style="color:#15803d;">✔ Major Strengths & Value Drivers</div>
+                <p><strong>${cRate >= baseConnect ? 'High Reachability' : 'Active Engagement'}:</strong> ${fmtPct(cRate)} contact conversion on assigned leads.</p>
+                <p style="margin-top:6px;"><strong>Pipeline Tenacity:</strong> Logged ${fmtNum(c.redials)} re-dials keeping pipeline hot.</p>
+              </div>
+
+              <div class="cc-block cc-improvements">
+                <div class="cc-block-title" style="color:#b45309;">⚠ Areas for Improvement & Growth</div>
+                <p><strong>Needs Discovery:</strong> Screen for higher program-match earlier to increase qualification depth.</p>
+                <p style="margin-top:6px;"><strong>Coaching Action:</strong> Adopt systematic 3-touch re-dial workflow over 72 hours.</p>
+              </div>
+            </div>
+
+            <div class="benchmark-gauge-wrap">
+              <div style="font-weight:700; color:var(--text-muted); font-size:0.68rem; margin-bottom:8px; text-transform:uppercase;">Individual vs Team Benchmark Gauge</div>
+              
+              <div class="gauge-row">
+                <div class="gauge-labels">
+                  <span>Reachability (Connect Rate)</span>
+                  <span>${fmtPct(cRate)} (Baseline: ${fmtPct(baseConnect)})</span>
+                </div>
+                <div class="gauge-track">
+                  <div class="gauge-fill" style="width: ${Math.min(cRate*100, 100)}%; background:#f59e0b;"></div>
+                  <div class="gauge-baseline-pin" style="left: ${baseConnect*100}%;"></div>
+                </div>
+              </div>
+
+              <div class="gauge-row" style="margin-top:10px;">
+                <div class="gauge-labels">
+                  <span>Lead Discovery (Qualify Rate)</span>
+                  <span>${fmtPct(qRate)} (Baseline: 23.8%)</span>
+                </div>
+                <div class="gauge-track">
+                  <div class="gauge-fill" style="width: ${Math.min(qRate*100, 100)}%; background:#3b82f6;"></div>
+                  <div class="gauge-baseline-pin" style="left: 23.8%;"></div>
+                </div>
+              </div>
+
+              <div class="gauge-row" style="margin-top:10px;">
+                <div class="gauge-labels">
+                  <span>Admissions Closing (Adm / Leads)</span>
+                  <span>${fmtPct(convRate)} (Baseline: ${fmtPct(baseConversion)})</span>
+                </div>
+                <div class="gauge-track">
+                  <div class="gauge-fill" style="width: ${Math.min(convRate*500, 100)}%; background:#10b981;"></div>
+                  <div class="gauge-baseline-pin" style="left: ${baseConversion*500}%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+      document.getElementById('counselorCardsList').innerHTML = html;
+    }
+
+    function exportCSV() {
+      if (!filteredData.length) return alert("No data to export");
+      const headers = ["Date", "Source", "Stream", "Executive", "Team", "Leads", "Connected", "Qualified", "Fresh", "Followup", "Referral", "Amount", "Duration", "ReDials"];
+      const rows = filteredData.map(r => [
+        r.rawDate, r.source, r.stream, r.executive, r.team, r.leads, r.connected, r.qualified, r.fresh, r.followup, r.referral, r.amount, r.duration, r.redials
+      ]);
+      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Admissions_Report_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Initialize and run real-time poll every 30 seconds
+    fetchLiveData();
+    setInterval(fetchLiveData, 30000);
+  </script>
+</body>
+</html>
