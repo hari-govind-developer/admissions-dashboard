@@ -351,7 +351,7 @@
       font-size: 0.7rem;
     }
 
-    /* Main View Sections */
+    /* Main View Panels */
     .view-content {
       display: none;
     }
@@ -384,7 +384,7 @@
       margin-top: 3px;
     }
 
-    /* Chart Module */
+    /* Velocity Chart */
     .chart-inspector {
       background: #f8fafc;
       border: 1px solid var(--border);
@@ -407,7 +407,7 @@
       gap: 20px;
     }
 
-    /* Stream Box Cards */
+    /* Stream Contribution */
     .stream-box {
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -447,7 +447,7 @@
       margin-top: 2px;
     }
 
-    /* Channel Bars */
+    /* Channel Meters */
     .channel-row {
       display: flex;
       align-items: center;
@@ -486,7 +486,7 @@
       font-size: 0.78rem;
     }
 
-    /* Tables */
+    /* Data Tables */
     .custom-table {
       width: 100%;
       border-collapse: collapse;
@@ -522,7 +522,7 @@
     .tag-paid { background: #f3e8ff; color: #9333ea; }
     .tag-organic { background: #dcfce7; color: #16a34a; }
 
-    /* Funnel View */
+    /* Funnel Pipeline Steps */
     .funnel-steps {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -565,7 +565,7 @@
       display: inline-block;
     }
 
-    /* Scoreboard Hero Banner */
+    /* Scoreboard Banner */
     .scoreboard-hero {
       background: #0f172a;
       color: #fff;
@@ -608,7 +608,7 @@
       margin-top: 4px;
     }
 
-    /* Scoreboard Team Cards */
+    /* Scoreboard Cards Grid */
     .scoreboard-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -759,7 +759,7 @@
       flex-shrink: 0;
     }
 
-    /* Sort Bar & Controls */
+    /* Sorting Controls */
     .sort-control-group {
       display: flex;
       align-items: center;
@@ -794,7 +794,7 @@
       background: #edf2f7;
     }
 
-    /* Team Leaderboard Cards */
+    /* Leaderboard Cards Grid */
     .team-cards-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -842,7 +842,7 @@
       font-size: 0.75rem;
     }
 
-    /* Individual Insights Cards */
+    /* Individual Insights & Coaching Cards */
     .counselor-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -934,6 +934,64 @@
       gap: 6px;
     }
 
+    /* AI Diagnostic Insights Styling */
+    .ai-insight-item {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px dashed rgba(0,0,0,0.06);
+    }
+    .ai-insight-item:last-child {
+      margin-bottom: 0;
+      padding-bottom: 0;
+      border-bottom: none;
+    }
+    .ai-insight-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3px;
+    }
+    .ai-insight-name {
+      font-weight: 700;
+      font-size: 0.78rem;
+      color: #0f172a;
+    }
+    .ai-insight-pill {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .pill-green {
+      background: #dcfce7;
+      color: #15803d;
+    }
+    .ai-insight-desc {
+      font-size: 0.73rem;
+      color: #334155;
+      line-height: 1.35;
+      margin-top: 2px;
+    }
+    .ai-coaching-box {
+      margin-top: 6px;
+      background: #fefce8;
+      border: 1px solid #fef08a;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: 0.71rem;
+      color: #713f12;
+      line-height: 1.35;
+      display: flex;
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .ai-coaching-bulb {
+      font-size: 0.8rem;
+      flex-shrink: 0;
+    }
+
+    /* Gauges */
     .benchmark-gauge-wrap {
       border-top: 1px solid var(--border);
       padding-top: 14px;
@@ -1035,6 +1093,8 @@
         <option value="PREV_WEEK">Previous Week</option>
         <option value="CURR_MONTH">Current Month</option>
         <option value="PREV_MONTH">Previous Month</option>
+        <option value="LAST_3M">Last 3 Months</option>
+        <option value="LAST_6M">Last 6 Months</option>
       </select>
 
       <input type="date" id="dateFrom" class="date-ctrl" onchange="applyFilters()" />
@@ -1069,6 +1129,7 @@
         <button class="quick-pill" onclick="setQuickPill('CURR_MONTH', this)">Current Month</button>
         <button class="quick-pill" onclick="setQuickPill('PREV_MONTH', this)">Previous Month</button>
         <button class="quick-pill" onclick="setQuickPill('LAST_3M', this)">Last 3 Months</button>
+        <button class="quick-pill" onclick="setQuickPill('LAST_6M', this)">Last 6 Months</button>
       </div>
       <div class="status-meta">
         <span id="displayCount">Displaying: 0 entries</span>
@@ -1444,7 +1505,7 @@
     <div class="counselor-grid" id="counselorCardsList"></div>
   </div>
 
-  <!-- REAL-TIME ENGINE SCRIPT -->
+  <!-- REAL-TIME ENGINE SCRIPT (FIXED PRESETS, DROPDOWN PRESERVATION & AI DIAGNOSTICS) -->
   <script>
   // =========================================================================
   // 1. CONFIGURATION & STATE
@@ -1478,7 +1539,7 @@
   const fmtNum = (n) => Math.round(n || 0).toLocaleString();
   const fmtPct = (n) => ((n || 0) * 100).toFixed(1) + "%";
 
-  // Formats date into YYYY-MM-DD using local time (prevents UTC timezone shift)
+  // Formats date into YYYY-MM-DD using local time (prevents UTC timezone day-shift)
   function formatToInputDate(d) {
     if (!d || isNaN(d.getTime())) return '';
     const y = d.getFullYear();
@@ -1552,7 +1613,7 @@
   }
 
   // =========================================================================
-  // 3. DATA FETCHING (APPS SCRIPT NATIVE + ERROR ALERTS)
+  // 3. DATA FETCHING (APPS SCRIPT NATIVE + JSONP FALLBACK)
   // =========================================================================
   function fetchLiveData() {
     const syncMeta = document.getElementById("syncMeta");
@@ -1629,10 +1690,7 @@
         };
       });
 
-      // Update dataset timeline badge
       updateTimelineBadge();
-
-      // Populate dropdowns while preserving current selections
       populateDropdowns();
       applyFilters();
 
@@ -1710,10 +1768,8 @@
   }
 
   // =========================================================================
-  // 4. DROPDOWNS & FILTER LOGIC (BUG 1 & BUG 2 FIXED)
+  // 4. DROPDOWNS & FILTER LOGIC (PRESERVES SELECTIONS ON SYNC)
   // =========================================================================
-
-  // FIX FOR BUG 1: Preserves selected values across all syncs
   function populateDropdowns() {
     const sSelect = document.getElementById("sourceFilter");
     const tSelect = document.getElementById("teamFilter");
@@ -1733,21 +1789,21 @@
       if (r.executive) execs.add(r.executive);
     });
 
-    // Populate Sources
+    // Sources dropdown
     sSelect.innerHTML = `<option value="ALL">All Sources (${sources.size})</option>`;
     Array.from(sources).sort().forEach(s => sSelect.innerHTML += `<option value="${s}">${s}</option>`);
     if (savedSource && (savedSource === "ALL" || sources.has(savedSource))) {
       sSelect.value = savedSource;
     }
 
-    // Populate Teams
+    // Teams dropdown
     tSelect.innerHTML = `<option value="ALL">All Teams (${teams.size})</option>`;
     Array.from(teams).sort().forEach(t => tSelect.innerHTML += `<option value="${t}">${t}</option>`);
     if (savedTeam && (savedTeam === "ALL" || teams.has(savedTeam))) {
       tSelect.value = savedTeam;
     }
 
-    // Populate Executives
+    // Executives dropdown
     eSelect.innerHTML = `<option value="ALL">All Executives (${execs.size})</option>`;
     Array.from(execs).sort().forEach(e => eSelect.innerHTML += `<option value="${e}">${e}</option>`);
     if (savedExec && (savedExec === "ALL" || execs.has(savedExec))) {
@@ -1771,7 +1827,7 @@
     handlePresetChange();
   }
 
-  // FIX FOR BUG 2: Calculates 1st to last calendar days without UTC timezone bugs
+  // Exact calendar month date calculation (1st to 30/31st without day-shift)
   function handlePresetChange() {
     const val = document.getElementById('datePreset').value;
     const today = new Date();
@@ -1787,11 +1843,11 @@
       end = new Date(today);
       end.setDate(today.getDate() - 7);
     } else if (val === 'CURR_MONTH') {
-      // 1st of current month to the LAST day of current month (e.g. 1 to 30/31)
+      // 1st of month to the last day of month
       start = new Date(today.getFullYear(), today.getMonth(), 1);
       end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     } else if (val === 'PREV_MONTH') {
-      // 1st of previous month to the LAST day of previous month
+      // 1st of previous month to the last day of previous month
       start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       end = new Date(today.getFullYear(), today.getMonth(), 0);
     } else if (val === 'LAST_3M') {
@@ -2311,32 +2367,248 @@
     }).join("");
   }
 
+  // =========================================================================
+  // AI DIAGNOSTIC ENGINE FOR INDIVIDUAL COUNSELORS
+  // =========================================================================
+  function generateCounselorAIInsights(c, base) {
+    const strengths = [];
+    const improvements = [];
+
+    const cRate = c.leads > 0 ? (c.conn / c.leads) : 0;
+    const qRate = c.conn > 0 ? (c.qual / c.conn) : 0;
+    const admQualRate = c.qual > 0 ? (c.adm / c.qual) : 0;
+    const convRate = c.leads > 0 ? (c.adm / c.leads) : 0;
+    const avgTicket = c.adm > 0 ? (c.amount / c.adm) : 0;
+    const minsPerCall = c.conn > 0 ? (c.duration / c.conn) : 0;
+    const nurturedAdm = (c.followup || 0) + (c.referral || 0);
+
+    const hrs = Math.floor(c.duration / 60);
+    const mins = Math.round(c.duration % 60);
+
+    // 1. EVALUATE STRENGTHS
+    if (cRate >= base.connect && c.conn >= 20) {
+      strengths.push({
+        title: "Prompt Calling & High Reachability",
+        badge: `${fmtPct(cRate)} Connect`,
+        desc: `Connect rate is ${fmtPct(cRate)} (vs team average ${fmtPct(base.connect)}), demonstrating prompt dial-out and good contact persistence.`
+      });
+    }
+
+    if (admQualRate >= base.admQual && c.adm >= 3) {
+      strengths.push({
+        title: "Strong Closer for Qualified Prospects",
+        badge: `${fmtPct(admQualRate)} Adm / Qual`,
+        desc: `Converts ${fmtPct(admQualRate)} of qualified inquiries into enrolled students (team benchmark: ${fmtPct(base.admQual)}).`
+      });
+    }
+
+    if (avgTicket >= base.ticket && c.adm >= 2) {
+      strengths.push({
+        title: "High Revenue Realization per Admission",
+        badge: `${fmtInr(avgTicket)} Avg`,
+        desc: `Average fee collection of ${fmtInr(avgTicket)} collected per student, maximizing tuition value and upfront payments.`
+      });
+    }
+
+    if (qRate >= base.qual && c.qual >= 15) {
+      strengths.push({
+        title: "Effective Lead Qualification",
+        badge: `${fmtPct(qRate)} Qualify Rate`,
+        desc: `Successfully qualifies ${fmtPct(qRate)} of connected calls (team benchmark: ${fmtPct(base.qual)}), identifying student readiness quickly.`
+      });
+    }
+
+    if (convRate >= base.conversion && c.adm >= 8) {
+      strengths.push({
+        title: "High Overall Conversion Closer",
+        badge: `${c.adm} Total Admissions`,
+        desc: `Achieves a ${fmtPct(convRate)} conversion rate from total leads to admission, outperforming team average (${fmtPct(base.conversion)}).`
+      });
+    }
+
+    if (c.redials >= 400 || (c.leads > 0 && c.redials >= c.leads * 0.7)) {
+      strengths.push({
+        title: "High Re-dial Follow-up Tenacity",
+        badge: `${fmtNum(c.redials)} Re-dials`,
+        desc: `Completed ${fmtNum(c.redials)} re-dials, keeping unreached and passive leads active in the pipeline.`
+      });
+    }
+
+    if (nurturedAdm >= 5) {
+      strengths.push({
+        title: "Excellence in Pipeline Nurturing",
+        badge: `${nurturedAdm} Nurtured Adm`,
+        desc: `Secured ${nurturedAdm} admissions from follow-ups and referrals, indicating excellent student relationship building.`
+      });
+    }
+
+    if ((c.referral || 0) >= 3) {
+      strengths.push({
+        title: "Strong Referral Generator",
+        badge: `${c.referral} Referrals`,
+        desc: `Generated ${c.referral} direct peer referral admissions through student trust and positive counseling experiences.`
+      });
+    }
+
+    if (c.duration >= 1800 || minsPerCall >= 8.5) {
+      strengths.push({
+        title: "Dedicated Consultation Talk Time",
+        badge: `${hrs}h ${mins}m Time`,
+        desc: `Invested ${hrs}h ${mins}m total counseling time (${minsPerCall.toFixed(1)} mins/connected call), providing patient career roadmapping.`
+      });
+    }
+
+    if (c.adm >= 5 && (c.fresh / c.adm) >= 0.7) {
+      strengths.push({
+        title: "High Fresh Deal Velocity",
+        badge: `${c.fresh} Fresh Adm`,
+        desc: `Demonstrates strong initial pitch clarity, closing ${fmtPct(c.fresh / c.adm)} of admissions directly on early cycles.`
+      });
+    }
+
+    if (strengths.length === 0) {
+      strengths.push({
+        title: "Active Pipeline Engagement",
+        badge: `${fmtNum(c.leads)} Leads`,
+        desc: `Managing ${fmtNum(c.leads)} assigned inquiries with active outreach and consistent dial activity.`
+      });
+    }
+
+    // 2. EVALUATE AREAS FOR IMPROVEMENT
+    if (cRate < base.connect && c.leads >= 25) {
+      improvements.push({
+        title: "Call Connection Rate Needs Improvement",
+        desc: `Connected to only ${fmtNum(c.conn)} of ${fmtNum(c.leads)} leads (${fmtPct(cRate)} vs team avg ${fmtPct(base.connect)}).`,
+        coaching: "Target calling within 5 minutes of lead arrival and test varying contact times across morning (9:30–11 AM) and late afternoon (4–6 PM) windows."
+      });
+    }
+
+    if (qRate < base.qual && c.conn >= 20) {
+      improvements.push({
+        title: "Deepen Needs Discovery & Qualification",
+        desc: `Only ${fmtPct(qRate)} of connected calls reach qualified status (${fmtNum(c.qual)} qualified from ${fmtNum(c.conn)} connected calls vs benchmark ${fmtPct(base.qual)}).`,
+        coaching: "Improve open-ended probing during initial calls to uncover student career aspirations, eligibility, and program-match earlier."
+      });
+    }
+
+    if (c.redials < 150 && c.leads >= 150) {
+      improvements.push({
+        title: "Increase Re-dial & Follow-up Cadence",
+        desc: `Logged only ${fmtNum(c.redials)} re-dials for ${fmtNum(c.leads)} total leads, leaving potential prospects uncontacted after first attempt.`,
+        coaching: "Adopt a systematic 3-touch re-dial workflow over 72 hours for unreached calls before moving them to cold nurture."
+      });
+    }
+
+    if (admQualRate < base.admQual && c.qual >= 15 && c.adm < 12) {
+      improvements.push({
+        title: "Address Closing Hesitation on Qualified Leads",
+        desc: `Converts only ${fmtPct(admQualRate)} of qualified prospects (team benchmark: ${fmtPct(base.admQual)}). Inquiries stall before final payment confirmation.`,
+        coaching: "Focus on isolating core financial and family objections on call 2, and structure firm decision deadlines with parent meetings."
+      });
+    }
+
+    if (minsPerCall < 4.5 && c.conn >= 25) {
+      improvements.push({
+        title: "Consultation Call Duration Too Brief",
+        desc: `Average call duration is only ${minsPerCall.toFixed(1)} mins/call. Calls may be too brief to build deep career conviction.`,
+        coaching: "Dedicate at least 8–10 minutes to walk through curriculum modules, placement records, and mentor support ecosystems."
+      });
+    }
+
+    if (minsPerCall > 14 && admQualRate < base.admQual && c.conn >= 20) {
+      improvements.push({
+        title: "Streamline Call Engagement to Drive Decisions",
+        desc: `High average call length (${minsPerCall.toFixed(1)} mins/call) with lower conversion suggests calls become circular without advancing to closing.`,
+        coaching: "Structure calls into 3 clear phases: Discovery (3m) → Value Alignment (5m) → Next Action & Fee Confirmation (4m)."
+      });
+    }
+
+    if (avgTicket < base.ticket * 0.85 && c.adm >= 4) {
+      improvements.push({
+        title: "Improve Upfront Fee Realization",
+        desc: `Average collection is ${fmtInr(avgTicket)} (team average: ${fmtInr(base.ticket)}), indicating reliance on lower initial booking amounts.`,
+        coaching: "Position standard full-payment benefits and institutional EMI/financing plans instead of offering split token options upfront."
+      });
+    }
+
+    if (convRate < 0.015 && c.leads >= 400 && c.adm <= 5) {
+      improvements.push({
+        title: "High Inquiry Attrition (Pipeline Bottleneck)",
+        desc: `Conversion rate is ${fmtPct(convRate)} across ${fmtNum(c.leads)} leads. High lead volume is yielding lower than average enrollment output.`,
+        coaching: "Review call recordings weekly with the Team Lead to audit objection-handling scripts and pitch transitions."
+      });
+    }
+
+    if ((c.followup || 0) === 0 && c.adm >= 4 && c.leads >= 200) {
+      improvements.push({
+        title: "Balance Fresh Inquiries with Follow-up Pipeline",
+        desc: `All admissions were fresh closes (0 follow-up admissions), indicating warm, long-cycle prospects are being neglected.`,
+        coaching: "Block out the first 90 minutes of every morning exclusively for active follow-up callbacks before dialing new leads."
+      });
+    }
+
+    // Top Performer fallback
+    if (improvements.length === 0) {
+      improvements.push({
+        title: "Scale Volume & Coach Peers",
+        desc: "Metrics are consistently well-balanced across connect, qualification, and closing stages. Candidate is well-positioned to handle higher volume.",
+        coaching: "Share call recordings with peers, take on premium/high-intent leads, and pilot advanced course conversions."
+      });
+    }
+
+    return {
+      strengths: strengths.slice(0, 4),
+      improvements: improvements.slice(0, 2)
+    };
+  }
+
   function renderIndividualInsights() {
     let gLeads = 0, gConn = 0, gQual = 0, gAdm = 0, gAmt = 0;
     filteredData.forEach(r => {
-      gLeads += r.leads; gConn += r.connected; gQual += r.qualified;
+      gLeads += r.leads;
+      gConn += r.connected;
+      gQual += r.qualified;
       gAdm += (r.fresh + r.followup + r.referral);
       gAmt += r.amount;
     });
 
-    const baseConnect = gLeads > 0 ? (gConn / gLeads) : 0;
-    const baseConversion = gLeads > 0 ? (gAdm / gLeads) : 0;
-    const baseAdmQual = gQual > 0 ? (gAdm / gQual) : 0;
-    const baseTicket = gAdm > 0 ? (gAmt / gAdm) : 0;
+    const base = {
+      connect: gLeads > 0 ? (gConn / gLeads) : 0,
+      conversion: gLeads > 0 ? (gAdm / gLeads) : 0,
+      qual: gConn > 0 ? (gQual / gConn) : 0,
+      admQual: gQual > 0 ? (gAdm / gQual) : 0,
+      ticket: gAdm > 0 ? (gAmt / gAdm) : 0
+    };
 
-    document.getElementById('baseConnRate').innerText = fmtPct(baseConnect);
-    document.getElementById('baseConvRate').innerText = fmtPct(baseConversion);
-    document.getElementById('baseAdmQual').innerText = fmtPct(baseAdmQual);
-    document.getElementById('baseTicket').innerText = fmtInr(baseTicket);
+    document.getElementById('baseConnRate').innerText = fmtPct(base.connect);
+    document.getElementById('baseConvRate').innerText = fmtPct(base.conversion);
+    document.getElementById('baseAdmQual').innerText = fmtPct(base.admQual);
+    document.getElementById('baseTicket').innerText = fmtInr(base.ticket);
 
     const execMap = {};
     filteredData.forEach(r => {
       if (!execMap[r.executive]) {
-        execMap[r.executive] = { name: r.executive, team: r.team, leads: 0, conn: 0, qual: 0, adm: 0, amount: 0, redials: 0, duration: 0 };
+        execMap[r.executive] = { 
+          name: r.executive, 
+          team: r.team, 
+          leads: 0, 
+          conn: 0, 
+          qual: 0, 
+          adm: 0, 
+          fresh: 0, 
+          followup: 0, 
+          referral: 0, 
+          amount: 0, 
+          redials: 0, 
+          duration: 0 
+        };
       }
       execMap[r.executive].leads += r.leads;
       execMap[r.executive].conn += r.connected;
       execMap[r.executive].qual += r.qualified;
+      execMap[r.executive].fresh += r.fresh;
+      execMap[r.executive].followup += r.followup;
+      execMap[r.executive].referral += r.referral;
       execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
       execMap[r.executive].amount += r.amount;
       execMap[r.executive].redials += r.redials;
@@ -2356,8 +2628,11 @@
       const cRate = c.leads > 0 ? (c.conn / c.leads) : 0;
       const convRate = c.leads > 0 ? (c.adm / c.leads) : 0;
       const qRate = c.conn > 0 ? (c.qual / c.conn) : 0;
-      const diffConnect = ((cRate - baseConnect) * 100).toFixed(1);
-      const diffConv = ((convRate - baseConversion) * 100).toFixed(1);
+      const diffConnect = ((cRate - base.connect) * 100).toFixed(1);
+      const diffConv = ((convRate - base.conversion) * 100).toFixed(1);
+
+      // Run Diagnostic Engine
+      const ai = generateCounselorAIInsights(c, base);
 
       return `
         <div class="counselor-card">
@@ -2370,8 +2645,8 @@
               </div>
             </div>
             <div style="display:flex; gap:6px;">
-              <span class="tc-badge" style="background:#e0f2fe; color:#0369a1;">📞 ${c.conn} Connected</span>
-              <span class="tc-badge" style="background:#ede9fe; color:#6d28d9;">🎯 ${c.qual} Qualified</span>
+              <span class="tc-badge" style="background:#e0f2fe; color:#0369a1;">📞 ${fmtNum(c.conn)} Connected</span>
+              <span class="tc-badge" style="background:#ede9fe; color:#6d28d9;">🎯 ${fmtNum(c.qual)} Qualified</span>
             </div>
           </div>
 
@@ -2382,59 +2657,87 @@
             <div>Conversion Rate<br><strong style="font-size:1.1rem;">${fmtPct(convRate)}</strong> <span style="font-size:0.65rem; color:${diffConv >= 0 ? '#10b981' : '#ef4444'}">${diffConv >= 0 ? '+' : ''}${diffConv}%</span></div>
           </div>
 
+          <!-- Dynamic AI Insights Grid -->
           <div class="cc-sections-2">
+            <!-- Strengths -->
             <div class="cc-block cc-strengths">
-              <div class="cc-block-title" style="color:#15803d;">✔ Major Strengths & Value Drivers</div>
-              <p><strong>${cRate >= baseConnect ? 'High Reachability' : 'Active Engagement'}:</strong> ${fmtPct(cRate)} contact conversion on assigned leads.</p>
-              <p style="margin-top:6px;"><strong>Pipeline Tenacity:</strong> Logged ${fmtNum(c.redials)} re-dials keeping pipeline hot.</p>
+              <div class="cc-block-title" style="color:#15803d;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Major Strengths & Value Drivers
+              </div>
+              ${ai.strengths.map(s => `
+                <div class="ai-insight-item">
+                  <div class="ai-insight-head">
+                    <span class="ai-insight-name">${s.title}</span>
+                    <span class="ai-insight-pill pill-green">${s.badge}</span>
+                  </div>
+                  <p class="ai-insight-desc">${s.desc}</p>
+                </div>
+              `).join("")}
             </div>
 
+            <!-- Areas for Improvement & Growth -->
             <div class="cc-block cc-improvements">
-              <div class="cc-block-title" style="color:#b45309;">⚠ Areas for Improvement & Growth</div>
-              <p><strong>Needs Discovery:</strong> Screen for higher program-match earlier to increase qualification depth.</p>
-              <p style="margin-top:6px;"><strong>Coaching Action:</strong> Adopt systematic 3-touch re-dial workflow over 72 hours.</p>
+              <div class="cc-block-title" style="color:#b45309;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                Areas for Improvement & Growth
+              </div>
+              ${ai.improvements.map(imp => `
+                <div class="ai-insight-item">
+                  <div class="ai-insight-head">
+                    <span class="ai-insight-name">${imp.title}</span>
+                  </div>
+                  <p class="ai-insight-desc">${imp.desc}</p>
+                  <div class="ai-coaching-box">
+                    <span class="ai-coaching-bulb">💡</span>
+                    <span><strong>Coaching Action:</strong> ${imp.coaching}</span>
+                  </div>
+                </div>
+              `).join("")}
             </div>
           </div>
 
+          <!-- Benchmark Gauges -->
           <div class="benchmark-gauge-wrap">
             <div style="font-weight:700; color:var(--text-muted); font-size:0.68rem; margin-bottom:8px; text-transform:uppercase;">Individual vs Team Benchmark Gauge</div>
             
             <div class="gauge-row">
               <div class="gauge-labels">
                 <span>Reachability (Connect Rate)</span>
-                <span>${fmtPct(cRate)} (Baseline: ${fmtPct(baseConnect)})</span>
+                <span>${fmtPct(cRate)} (Baseline: ${fmtPct(base.connect)})</span>
               </div>
               <div class="gauge-track">
                 <div class="gauge-fill" style="width: ${Math.min(cRate*100, 100)}%; background:#f59e0b;"></div>
-                <div class="gauge-baseline-pin" style="left: ${baseConnect*100}%;"></div>
+                <div class="gauge-baseline-pin" style="left: ${Math.min(base.connect*100, 100)}%;"></div>
               </div>
             </div>
 
             <div class="gauge-row" style="margin-top:10px;">
               <div class="gauge-labels">
                 <span>Lead Discovery (Qualify Rate)</span>
-                <span>${fmtPct(qRate)} (Baseline: 23.8%)</span>
+                <span>${fmtPct(qRate)} (Baseline: ${fmtPct(base.qual)})</span>
               </div>
               <div class="gauge-track">
                 <div class="gauge-fill" style="width: ${Math.min(qRate*100, 100)}%; background:#3b82f6;"></div>
-                <div class="gauge-baseline-pin" style="left: 23.8%;"></div>
+                <div class="gauge-baseline-pin" style="left: ${Math.min(base.qual*100, 100)}%;"></div>
               </div>
             </div>
 
             <div class="gauge-row" style="margin-top:10px;">
               <div class="gauge-labels">
                 <span>Admissions Closing (Adm / Leads)</span>
-                <span>${fmtPct(convRate)} (Baseline: ${fmtPct(baseConversion)})</span>
+                <span>${fmtPct(convRate)} (Baseline: ${fmtPct(base.conversion)})</span>
               </div>
               <div class="gauge-track">
                 <div class="gauge-fill" style="width: ${Math.min(convRate*500, 100)}%; background:#10b981;"></div>
-                <div class="gauge-baseline-pin" style="left: ${baseConversion*500}%;"></div>
+                <div class="gauge-baseline-pin" style="left: ${Math.min(base.conversion*500, 100)}%;"></div>
               </div>
             </div>
           </div>
         </div>
       `;
     }).join("");
+
     document.getElementById('counselorCardsList').innerHTML = html;
   }
 
@@ -2454,7 +2757,7 @@
     document.body.removeChild(link);
   }
 
-  // Initial call & 30-sec polling
+  // Initial fetch and 30-sec polling
   fetchLiveData();
   setInterval(fetchLiveData, 30000);
   </script>
