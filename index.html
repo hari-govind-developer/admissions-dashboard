@@ -1446,897 +1446,1017 @@
 
   <!-- REAL-TIME ENGINE SCRIPT -->
   <script>
-    const SPREADSHEET_ID = "1Uw_hiDCuNv2CmG4dU4QgbV5fsglh6k8Uv1jt5xqjsCo";
-    const SHEET_NAME = encodeURIComponent("Raw Data for Analysis");
+  // =========================================================================
+  // 1. CONFIGURATION & STATE
+  // =========================================================================
+  const SPREADSHEET_ID = "1Uw_hiDCuNv2CmG4dU4QgbV5fsglh6k8Uv1jt5xqjsCo";
+  const SHEET_NAME = encodeURIComponent("Raw Data for Analysis");
 
-    let allRawData = [];
-    let filteredData = [];
-    let currentStreamFilter = 'ALL';
-    let velocityChartInstance = null;
+  let allRawData = [];
+  let filteredData = [];
+  let currentStreamFilter = 'ALL';
+  let velocityChartInstance = null;
 
-    let currentSortKey = 'amount';
-    let currentSortOrder = 'desc';
+  let currentSortKey = 'amount';
+  let currentSortOrder = 'desc';
 
-    const fmtInr = (n) => "₹" + Math.round(n || 0).toLocaleString("en-IN");
-    const fmtNum = (n) => Math.round(n || 0).toLocaleString();
-    const fmtPct = (n) => ((n || 0) * 100).toFixed(1) + "%";
+  const TEAM_THEMES = [
+    { rank: '#1', rankBg: '#f59e0b', badgeBg: '#fef3c7', badgeColor: '#b45309', dot: '#f59e0b' },
+    { rank: '#2', rankBg: '#2563eb', badgeBg: '#dbeafe', badgeColor: '#1d4ed8', dot: '#2563eb' },
+    { rank: '#3', rankBg: '#10b981', badgeBg: '#d1fae5', badgeColor: '#047857', dot: '#10b981' },
+    { rank: '#4', rankBg: '#8b5cf6', badgeBg: '#ede9fe', badgeColor: '#6d28d9', dot: '#8b5cf6' },
+    { rank: '#5', rankBg: '#f43f5e', badgeBg: '#ffe4e6', badgeColor: '#be123c', dot: '#f43f5e' },
+    { rank: '#6', rankBg: '#0ea5e9', badgeBg: '#e0f2fe', badgeColor: '#0369a1', dot: '#0ea5e9' },
+    { rank: '#7', rankBg: '#c026d3', badgeBg: '#fae8ff', badgeColor: '#86198f', dot: '#c026d3' },
+    { rank: '#8', rankBg: '#0d9488', badgeBg: '#ccfbf1', badgeColor: '#0f766e', dot: '#0d9488' }
+  ];
 
-    function parseMinutes(val) {
-      if (!val) return 0;
-      if (typeof val === 'number') return val;
-      const str = String(val).toLowerCase();
-      let mins = 0;
-      const hMatch = str.match(/(\d+)\s*(?:hour|hr|h)/);
-      const mMatch = str.match(/(\d+)\s*(?:min|m)/);
-      if (hMatch) mins += parseFloat(hMatch[1]) * 60;
-      if (mMatch) mins += parseFloat(mMatch[1]);
-      if (!hMatch && !mMatch) {
-        const clean = parseFloat(str.replace(/[^0-9.]/g, ''));
-        if (!isNaN(clean)) mins += clean;
-      }
-      return mins;
+  // =========================================================================
+  // 2. PARSING & FORMATTING UTILITIES
+  // =========================================================================
+  const fmtInr = (n) => "₹" + Math.round(n || 0).toLocaleString("en-IN");
+  const fmtNum = (n) => Math.round(n || 0).toLocaleString();
+  const fmtPct = (n) => ((n || 0) * 100).toFixed(1) + "%";
+
+  // Formats date into YYYY-MM-DD using local time (prevents UTC timezone shift)
+  function formatToInputDate(d) {
+    if (!d || isNaN(d.getTime())) return '';
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function parseMinutes(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    const str = String(val).toLowerCase();
+    let mins = 0;
+    const hMatch = str.match(/(\d+)\s*(?:hour|hr|h)/);
+    const mMatch = str.match(/(\d+)\s*(?:min|m)/);
+    if (hMatch) mins += parseFloat(hMatch[1]) * 60;
+    if (mMatch) mins += parseFloat(mMatch[1]);
+    if (!hMatch && !mMatch) {
+      const clean = parseFloat(str.replace(/[^0-9.]/g, ''));
+      if (!isNaN(clean)) mins += clean;
     }
+    return mins;
+  }
 
-    function parseAmount(val) {
-      if (!val) return 0;
-      if (typeof val === 'number') return val;
-      const clean = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
-      return isNaN(clean) ? 0 : clean;
-    }
+  function parseAmount(val) {
+    if (!val) return 0;
+    if (typeof val === 'number') return val;
+    const clean = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
+    return isNaN(clean) ? 0 : clean;
+  }
 
-    function parseDate(val) {
-      if (!val) return null;
-      let d = new Date(val);
+  function parseDate(val) {
+    if (!val) return null;
+    let d = new Date(val);
+    if (!isNaN(d.getTime())) return d;
+    const parts = String(val).trim().split(' ');
+    if (parts.length === 3) {
+      d = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
       if (!isNaN(d.getTime())) return d;
-      const parts = String(val).trim().split(' ');
-      if (parts.length === 3) {
-        d = new Date(`${parts[1]} ${parts[0]}, ${parts[2]}`);
-        if (!isNaN(d.getTime())) return d;
-      }
-      return null;
     }
+    return null;
+  }
 
-    function getActiveFilterDays() {
-      const fromVal = document.getElementById('dateFrom').value;
-      const toVal = document.getElementById('dateTo').value;
-      if (fromVal && toVal) {
-        const diffTime = Math.abs(new Date(toVal) - new Date(fromVal));
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        return Math.max(diffDays, 1);
-      }
-      const timestamps = filteredData.map(r => r.date ? r.date.getTime() : null).filter(Boolean);
-      if (timestamps.length > 0) {
-        const minD = Math.min(...timestamps);
-        const maxD = Math.max(...timestamps);
-        const diffDays = Math.ceil((maxD - minD) / (1000 * 60 * 60 * 24)) + 1;
-        return Math.max(diffDays, 1);
-      }
-      return 30;
+  function getActiveFilterDays() {
+    const fromVal = document.getElementById('dateFrom').value;
+    const toVal = document.getElementById('dateTo').value;
+    if (fromVal && toVal) {
+      const diffTime = Math.abs(new Date(toVal) - new Date(fromVal));
+      return Math.max(Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1, 1);
     }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
-
-      event.currentTarget.classList.add('active');
-      const target = document.getElementById(tabId);
-      if (target) target.classList.add('active');
-
-      if (tabId === 'executive-overview' && velocityChartInstance) {
-        velocityChartInstance.resize();
-      }
+    const timestamps = filteredData.map(r => r.date ? r.date.getTime() : null).filter(Boolean);
+    if (timestamps.length > 0) {
+      const minD = Math.min(...timestamps);
+      const maxD = Math.max(...timestamps);
+      return Math.max(Math.ceil((maxD - minD) / (1000 * 60 * 60 * 24)) + 1, 1);
     }
+    return 30;
+  }
 
-    // JSONP Script Injection to Bypass Browser Local CORS Limits
-    function fetchLiveData() {
-      const syncMeta = document.getElementById("syncMeta");
-      if (syncMeta) syncMeta.innerText = "● Syncing...";
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.view-content').forEach(v => v.classList.remove('active'));
 
+    event.currentTarget.classList.add('active');
+    const target = document.getElementById(tabId);
+    if (target) target.classList.add('active');
+
+    if (tabId === 'executive-overview' && velocityChartInstance) {
+      velocityChartInstance.resize();
+    }
+  }
+
+  // =========================================================================
+  // 3. DATA FETCHING (APPS SCRIPT NATIVE + ERROR ALERTS)
+  // =========================================================================
+  function fetchLiveData() {
+    const syncMeta = document.getElementById("syncMeta");
+    if (syncMeta) syncMeta.innerText = "● Syncing...";
+
+    if (typeof google !== 'undefined' && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(onDataSuccess)
+        .withFailureHandler(onDataFailure)
+        .getRawData();
+    } else {
       const existingScript = document.getElementById("gviz_jsonp_tag");
       if (existingScript) existingScript.remove();
-
       const script = document.createElement("script");
       script.id = "gviz_jsonp_tag";
-      script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:handleGvizResponse&sheet=${SHEET_NAME}&_cacheBust=${Date.now()}`;
-      
+      script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=responseHandler:handleGvizResponse&sheet=${SHEET_NAME}&_cb=${Date.now()}`;
       script.onerror = function() {
-        if (syncMeta) syncMeta.innerText = "● Connection Failed: Check Sheet Sharing";
-        alert("Unable to fetch data from Google Sheets.\n\nPlease verify:\n1. The sheet is set to 'Anyone with the link can view'.\n2. The tab name is exactly 'Raw Data for Analysis'.");
+        if (syncMeta) syncMeta.innerText = "● Sheet Connection Blocked";
       };
-
       document.body.appendChild(script);
     }
+  }
 
-    // GVIZ Callback
-    window.handleGvizResponse = function(response) {
-      try {
-        if (!response || !response.table) {
-          throw new Error("Invalid GVIZ table response");
-        }
-
-        const table = response.table;
-        let dataRows = table.rows;
-        if (!dataRows || dataRows.length === 0) {
-          document.getElementById("syncMeta").innerText = "● No Rows Found";
-          return;
-        }
-
-        let colMap = {};
-        const hasColLabels = table.cols.some(c => c && c.label && c.label.trim() !== "");
-
-        if (hasColLabels) {
-          table.cols.forEach((c, idx) => {
-            if (c && c.label) colMap[c.label.trim().toLowerCase()] = idx;
-          });
-        } else {
-          dataRows[0].c.forEach((cell, idx) => {
-            const val = cell ? String(cell.v || cell.f || "").trim().toLowerCase() : "";
-            if (val) colMap[val] = idx;
-          });
-          dataRows = dataRows.slice(1);
-        }
-
-        function getVal(row, name, fallbackIdx) {
-          let idx = colMap[name.toLowerCase()];
-          if (idx === undefined) idx = fallbackIdx;
-          if (!row.c || !row.c[idx]) return null;
-          return row.c[idx].f !== undefined ? row.c[idx].f : row.c[idx].v;
-        }
-
-        allRawData = dataRows.map(r => {
-          const rawDate = getVal(r, "Date", 0);
-          return {
-            date: parseDate(rawDate),
-            rawDate: rawDate,
-            source: (getVal(r, "Select Source", 1) || "Other").toString().trim(),
-            leads: parseFloat(getVal(r, "Leads Count", 2)) || 0,
-            connected: parseFloat(getVal(r, "Connected Calls", 3)) || 0,
-            qualified: parseFloat(getVal(r, "Qualified Leads", 4)) || 0,
-            fresh: parseFloat(getVal(r, "Fresh Admissions", 5)) || 0,
-            followup: parseFloat(getVal(r, "Followup Admissions", 6)) || 0,
-            referral: parseFloat(getVal(r, "Referral Admissions", 7)) || 0,
-            amount: parseAmount(getVal(r, "Amount Collected", 8)),
-            duration: parseMinutes(getVal(r, "Call Duration", 9)),
-            redials: parseFloat(getVal(r, "Re Dial Count", 10)) || 0,
-            executive: (getVal(r, "Executives", 11) || "Unassigned").toString().trim(),
-            team: (getVal(r, "Team Lead", 12) || "No TL Found").toString().trim(),
-            stream: (getVal(r, "Stream", 13) || "Organic").toString().trim()
-          };
-        });
-
-        populateDropdowns();
-        applyFilters();
-
-        const syncMeta = document.getElementById("syncMeta");
-        if (syncMeta) syncMeta.innerText = `● Live Synced (${new Date().toLocaleTimeString()})`;
-      } catch (err) {
-        console.error("Data processing failed:", err);
-        const syncMeta = document.getElementById("syncMeta");
-        if (syncMeta) syncMeta.innerText = "● Parsing Error";
-      }
-    };
-
-    function populateDropdowns() {
-      const sources = new Set();
-      const teams = new Set();
-      const execs = new Set();
-
-      allRawData.forEach(r => {
-        if (r.source) sources.add(r.source);
-        if (r.team) teams.add(r.team);
-        if (r.executive) execs.add(r.executive);
-      });
-
-      const sSelect = document.getElementById("sourceFilter");
-      sSelect.innerHTML = `<option value="ALL">All Sources (${sources.size})</option>`;
-      Array.from(sources).sort().forEach(s => sSelect.innerHTML += `<option value="${s}">${s}</option>`);
-
-      const tSelect = document.getElementById("teamFilter");
-      tSelect.innerHTML = `<option value="ALL">All Teams (${teams.size})</option>`;
-      Array.from(teams).sort().forEach(t => tSelect.innerHTML += `<option value="${t}">${t}</option>`);
-
-      const eSelect = document.getElementById("execFilter");
-      eSelect.innerHTML = `<option value="ALL">All Executives (${execs.size})</option>`;
-      Array.from(execs).sort().forEach(e => eSelect.innerHTML += `<option value="${e}">${e}</option>`);
+  function onDataSuccess(response) {
+    const syncMeta = document.getElementById("syncMeta");
+    if (!response || !response.success) {
+      const msg = response ? response.error : "Unknown server response";
+      if (syncMeta) syncMeta.innerText = "● " + msg;
+      return;
     }
 
-    function setStreamFilter(val, el) {
-      currentStreamFilter = val;
-      document.querySelectorAll('.stream-toggle button').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
-      applyFilters();
-    }
-
-    function setQuickPill(preset, el) {
-      document.querySelectorAll('.quick-pill').forEach(b => b.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('datePreset').value = preset;
-      handlePresetChange();
-    }
-
-    function handlePresetChange() {
-      const val = document.getElementById('datePreset').value;
-      const today = new Date();
-      let start = null, end = null;
-
-      if (val === 'THIS_WEEK') {
-        start = new Date();
-        start.setDate(today.getDate() - 7);
-        end = today;
-      } else if (val === 'PREV_WEEK') {
-        start = new Date();
-        start.setDate(today.getDate() - 14);
-        end = new Date();
-        end.setDate(today.getDate() - 7);
-      } else if (val === 'CURR_MONTH') {
-        start = new Date(today.getFullYear(), today.getMonth(), 1);
-        end = today;
-      } else if (val === 'PREV_MONTH') {
-        start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        end = new Date(today.getFullYear(), today.getMonth(), 0);
-      } else if (val === 'LAST_3M') {
-        start = new Date();
-        start.setMonth(today.getMonth() - 3);
-        end = today;
-      }
-
-      document.getElementById('dateFrom').value = start ? start.toISOString().split('T')[0] : '';
-      document.getElementById('dateTo').value = end ? end.toISOString().split('T')[0] : '';
-      applyFilters();
-    }
-
-    function applyFilters() {
-      const search = (document.getElementById('searchInput').value || "").toLowerCase();
-      const from = document.getElementById('dateFrom').value ? new Date(document.getElementById('dateFrom').value) : null;
-      const to = document.getElementById('dateTo').value ? new Date(document.getElementById('dateTo').value) : null;
-      if (to) to.setHours(23,59,59,999);
-
-      const source = document.getElementById('sourceFilter').value;
-      const team = document.getElementById('teamFilter').value;
-      const exec = document.getElementById('execFilter').value;
-
-      filteredData = allRawData.filter(r => {
-        if (search && !r.executive.toLowerCase().includes(search) && !r.team.toLowerCase().includes(search) && !r.source.toLowerCase().includes(search)) return false;
-        if (from && r.date && r.date < from) return false;
-        if (to && r.date && r.date > to) return false;
-        if (currentStreamFilter !== 'ALL' && r.stream.toLowerCase() !== currentStreamFilter.toLowerCase()) return false;
-        if (source !== 'ALL' && r.source !== source) return false;
-        if (team !== 'ALL' && r.team !== team) return false;
-        if (exec !== 'ALL' && r.executive !== exec) return false;
-        return true;
-      });
-
-      document.getElementById('displayCount').innerText = `Displaying: ${filteredData.length} of ${allRawData.length} total entries`;
-      renderDashboard();
-    }
-
-    function renderDashboard() {
-      renderTopKPIs();
-      renderExecutiveOverview();
-      renderFunnel();
-      renderChannelMatrix();
-      renderTeamLeaderboard();
-      renderScoreboard();
-      renderIndividualInsights();
-    }
-
-    function renderTopKPIs() {
-      let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amount = 0, dur = 0, redials = 0;
+    try {
+      const rows = JSON.parse(response.dataJson);
+      const headers = response.headers.map(h => String(h || "").trim().toLowerCase());
       
-      filteredData.forEach(r => {
-        leads += r.leads;
-        conn += r.connected;
-        qual += r.qualified;
-        fresh += r.fresh;
-        follow += r.followup;
-        ref += r.referral;
-        amount += r.amount;
-        dur += r.duration;
-        redials += r.redials;
+      const getIdx = (colName, fallback) => {
+        const found = headers.indexOf(colName.toLowerCase());
+        return found !== -1 ? found : fallback;
+      };
+
+      const dateIdx = getIdx("Date", 0);
+      const srcIdx = getIdx("Select Source", 1);
+      const leadsIdx = getIdx("Leads Count", 2);
+      const connIdx = getIdx("Connected Calls", 3);
+      const qualIdx = getIdx("Qualified Leads", 4);
+      const freshIdx = getIdx("Fresh Admissions", 5);
+      const followIdx = getIdx("Followup Admissions", 6);
+      const refIdx = getIdx("Referral Admissions", 7);
+      const amtIdx = getIdx("Amount Collected", 8);
+      const durIdx = getIdx("Call Duration", 9);
+      const redialsIdx = getIdx("Re Dial Count", 10);
+      const execIdx = getIdx("Executives", 11);
+      const teamIdx = getIdx("Team Lead", 12);
+      const streamIdx = getIdx("Stream", 13);
+
+      allRawData = rows.map(r => {
+        const rawDate = r[dateIdx] || "";
+        return {
+          date: parseDate(rawDate),
+          rawDate: rawDate,
+          source: (r[srcIdx] || "Other").toString().trim(),
+          leads: parseFloat(r[leadsIdx]) || 0,
+          connected: parseFloat(r[connIdx]) || 0,
+          qualified: parseFloat(r[qualIdx]) || 0,
+          fresh: parseFloat(r[freshIdx]) || 0,
+          followup: parseFloat(r[followIdx]) || 0,
+          referral: parseFloat(r[refIdx]) || 0,
+          amount: parseAmount(r[amtIdx]),
+          duration: parseMinutes(r[durIdx]),
+          redials: parseFloat(r[redialsIdx]) || 0,
+          executive: (r[execIdx] || "Unassigned").toString().trim(),
+          team: (r[teamIdx] || "No TL Found").toString().trim(),
+          stream: (r[streamIdx] || "Organic").toString().trim()
+        };
       });
 
-      const admissions = fresh + follow + ref;
-      const avgTicket = admissions > 0 ? (amount / admissions) : 0;
-      const connectRate = leads > 0 ? (conn / leads) : 0;
-      const qualRate = conn > 0 ? (qual / conn) : 0;
-      const admQualRate = qual > 0 ? (admissions / qual) : 0;
-      const overallConversion = leads > 0 ? (admissions / leads) : 0;
+      // Update dataset timeline badge
+      updateTimelineBadge();
 
-      document.getElementById('kpiAmount').innerText = fmtInr(amount);
-      document.getElementById('kpiAvgTicket').innerText = `Avg Ticket: ${fmtInr(avgTicket)}`;
-      document.getElementById('kpiAdmissions').innerText = fmtNum(admissions);
-      document.getElementById('kpiAdmSplit').innerHTML = `<span>Fresh: ${fresh}</span> • <span>Followup: ${follow}</span> • <span>Ref: ${ref}</span>`;
-      document.getElementById('kpiLeads').innerHTML = `${fmtNum(leads)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Leads</span>`;
-      document.getElementById('kpiConnectRate').innerText = `${fmtPct(connectRate)} Connected`;
-      document.getElementById('kpiCallsCount').innerText = `(${fmtNum(conn)} calls)`;
-      document.getElementById('kpiQualRate').innerHTML = `${fmtPct(qualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Qualification</span>`;
-      document.getElementById('kpiDurationSub').innerHTML = `<span>${fmtNum(qual)} Qualified</span> • <span>${Math.round(dur/60)}h talk time</span> • <span>${fmtNum(redials)} Re-dials</span>`;
-      document.getElementById('kpiAdmQualRate').innerHTML = `${fmtPct(admQualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Qual</span>`;
-      document.getElementById('kpiAdmQualSub').innerText = `${admissions} Admissions from ${qual} Qualified`;
-      document.getElementById('kpiOverallConversion').innerHTML = `${fmtPct(overallConversion)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Leads</span>`;
-      document.getElementById('kpiOverallConversionSub').innerText = `${admissions} Admissions from ${fmtNum(leads)} Leads`;
+      // Populate dropdowns while preserving current selections
+      populateDropdowns();
+      applyFilters();
+
+      if (syncMeta) syncMeta.innerText = `● Live Synced (${new Date().toLocaleTimeString()})`;
+    } catch(err) {
+      console.error(err);
+      if (syncMeta) syncMeta.innerText = "● JSON Parse Error";
+    }
+  }
+
+  function onDataFailure(err) {
+    console.error("Apps Script server error:", err);
+    const syncMeta = document.getElementById("syncMeta");
+    if (syncMeta) syncMeta.innerText = "● Server Call Failed";
+  }
+
+  window.handleGvizResponse = function(response) {
+    try {
+      if (!response || !response.table) return;
+      const table = response.table;
+      let dataRows = table.rows;
+      if (!dataRows || dataRows.length === 0) return;
+
+      let colMap = {};
+      table.cols.forEach((c, idx) => {
+        if (c && c.label) colMap[c.label.trim().toLowerCase()] = idx;
+      });
+
+      function getVal(row, name, fallbackIdx) {
+        let idx = colMap[name.toLowerCase()];
+        if (idx === undefined) idx = fallbackIdx;
+        if (!row.c || !row.c[idx]) return null;
+        return row.c[idx].f !== undefined ? row.c[idx].f : row.c[idx].v;
+      }
+
+      allRawData = dataRows.map(r => {
+        const rawDate = getVal(r, "Date", 0);
+        return {
+          date: parseDate(rawDate),
+          rawDate: rawDate,
+          source: (getVal(r, "Select Source", 1) || "Other").toString().trim(),
+          leads: parseFloat(getVal(r, "Leads Count", 2)) || 0,
+          connected: parseFloat(getVal(r, "Connected Calls", 3)) || 0,
+          qualified: parseFloat(getVal(r, "Qualified Leads", 4)) || 0,
+          fresh: parseFloat(getVal(r, "Fresh Admissions", 5)) || 0,
+          followup: parseFloat(getVal(r, "Followup Admissions", 6)) || 0,
+          referral: parseFloat(getVal(r, "Referral Admissions", 7)) || 0,
+          amount: parseAmount(getVal(r, "Amount Collected", 8)),
+          duration: parseMinutes(getVal(r, "Call Duration", 9)),
+          redials: parseFloat(getVal(r, "Re Dial Count", 10)) || 0,
+          executive: (getVal(r, "Executives", 11) || "Unassigned").toString().trim(),
+          team: (getVal(r, "Team Lead", 12) || "No TL Found").toString().trim(),
+          stream: (getVal(r, "Stream", 13) || "Organic").toString().trim()
+        };
+      });
+
+      updateTimelineBadge();
+      populateDropdowns();
+      applyFilters();
+
+      const syncMeta = document.getElementById("syncMeta");
+      if (syncMeta) syncMeta.innerText = `● Live Synced (${new Date().toLocaleTimeString()})`;
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  function updateTimelineBadge() {
+    const dates = allRawData.map(r => r.date ? r.date.getTime() : null).filter(Boolean);
+    if (dates.length > 0) {
+      const minD = new Date(Math.min(...dates));
+      const maxD = new Date(Math.max(...dates));
+      document.getElementById('datasetTimeline').innerText = `Dataset Timeline: ${formatToInputDate(minD)} to ${formatToInputDate(maxD)}`;
+    }
+  }
+
+  // =========================================================================
+  // 4. DROPDOWNS & FILTER LOGIC (BUG 1 & BUG 2 FIXED)
+  // =========================================================================
+
+  // FIX FOR BUG 1: Preserves selected values across all syncs
+  function populateDropdowns() {
+    const sSelect = document.getElementById("sourceFilter");
+    const tSelect = document.getElementById("teamFilter");
+    const eSelect = document.getElementById("execFilter");
+
+    const savedSource = sSelect.value;
+    const savedTeam = tSelect.value;
+    const savedExec = eSelect.value;
+
+    const sources = new Set();
+    const teams = new Set();
+    const execs = new Set();
+
+    allRawData.forEach(r => {
+      if (r.source) sources.add(r.source);
+      if (r.team) teams.add(r.team);
+      if (r.executive) execs.add(r.executive);
+    });
+
+    // Populate Sources
+    sSelect.innerHTML = `<option value="ALL">All Sources (${sources.size})</option>`;
+    Array.from(sources).sort().forEach(s => sSelect.innerHTML += `<option value="${s}">${s}</option>`);
+    if (savedSource && (savedSource === "ALL" || sources.has(savedSource))) {
+      sSelect.value = savedSource;
     }
 
-    function renderExecutiveOverview() {
-      const dateMap = {};
-      let paidLeads = 0, paidConn = 0, paidAdm = 0, paidAmt = 0;
-      let orgLeads = 0, orgConn = 0, orgAdm = 0, orgAmt = 0;
+    // Populate Teams
+    tSelect.innerHTML = `<option value="ALL">All Teams (${teams.size})</option>`;
+    Array.from(teams).sort().forEach(t => tSelect.innerHTML += `<option value="${t}">${t}</option>`);
+    if (savedTeam && (savedTeam === "ALL" || teams.has(savedTeam))) {
+      tSelect.value = savedTeam;
+    }
 
-      filteredData.forEach(r => {
-        const dStr = r.date ? r.date.toISOString().split('T')[0] : (r.rawDate || 'Unknown');
-        if (!dateMap[dStr]) {
-          dateMap[dStr] = { date: dStr, leads: 0, connected: 0, admissions: 0, amount: 0, redials: 0 };
-        }
-        dateMap[dStr].leads += r.leads;
-        dateMap[dStr].connected += r.connected;
-        const adm = r.fresh + r.followup + r.referral;
-        dateMap[dStr].admissions += adm;
-        dateMap[dStr].amount += r.amount;
-        dateMap[dStr].redials += r.redials;
+    // Populate Executives
+    eSelect.innerHTML = `<option value="ALL">All Executives (${execs.size})</option>`;
+    Array.from(execs).sort().forEach(e => eSelect.innerHTML += `<option value="${e}">${e}</option>`);
+    if (savedExec && (savedExec === "ALL" || execs.has(savedExec))) {
+      eSelect.value = savedExec;
+    }
+  }
 
-        if (r.stream.toLowerCase() === 'paid') {
-          paidLeads += r.leads; paidConn += r.connected; paidAdm += adm; paidAmt += r.amount;
-        } else {
-          orgLeads += r.leads; orgConn += r.connected; orgAdm += adm; orgAmt += r.amount;
-        }
-      });
+  function setStreamFilter(val, el) {
+    currentStreamFilter = val;
+    document.querySelectorAll('.stream-toggle button').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    applyFilters();
+  }
 
-      document.getElementById('paidRevenue').innerText = fmtInr(paidAmt);
-      document.getElementById('paidLeads').innerText = fmtNum(paidLeads);
-      document.getElementById('paidConnected').innerText = fmtNum(paidConn);
-      document.getElementById('paidAdmissions').innerText = fmtNum(paidAdm);
+  function setQuickPill(preset, el) {
+    document.querySelectorAll('.quick-pill').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    
+    const presetDropdown = document.getElementById('datePreset');
+    presetDropdown.value = preset;
+    handlePresetChange();
+  }
 
-      document.getElementById('organicRevenue').innerText = fmtInr(orgAmt);
-      document.getElementById('organicLeads').innerText = fmtNum(orgLeads);
-      document.getElementById('organicConnected').innerText = fmtNum(orgConn);
-      document.getElementById('organicAdmissions').innerText = fmtNum(orgAdm);
+  // FIX FOR BUG 2: Calculates 1st to last calendar days without UTC timezone bugs
+  function handlePresetChange() {
+    const val = document.getElementById('datePreset').value;
+    const today = new Date();
+    let start = null, end = null;
 
-      const totalL = paidLeads + orgLeads;
-      document.getElementById('paidLeadShare').innerText = totalL > 0 ? fmtPct(paidLeads / totalL) : "0.0%";
+    if (val === 'THIS_WEEK') {
+      start = new Date(today);
+      start.setDate(today.getDate() - 6);
+      end = new Date(today);
+    } else if (val === 'PREV_WEEK') {
+      start = new Date(today);
+      start.setDate(today.getDate() - 13);
+      end = new Date(today);
+      end.setDate(today.getDate() - 7);
+    } else if (val === 'CURR_MONTH') {
+      // 1st of current month to the LAST day of current month (e.g. 1 to 30/31)
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (val === 'PREV_MONTH') {
+      // 1st of previous month to the LAST day of previous month
+      start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      end = new Date(today.getFullYear(), today.getMonth(), 0);
+    } else if (val === 'LAST_3M') {
+      start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (val === 'LAST_6M') {
+      start = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    } else if (val === 'ALL') {
+      start = null;
+      end = null;
+    }
 
-      const sortedDates = Object.keys(dateMap).sort();
-      const labels = sortedDates.map(d => d.slice(5));
-      const leadsData = sortedDates.map(d => dateMap[d].leads);
-      const connData = sortedDates.map(d => dateMap[d].connected);
-      const revData = sortedDates.map(d => dateMap[d].amount / 1000);
+    document.getElementById('dateFrom').value = formatToInputDate(start);
+    document.getElementById('dateTo').value = formatToInputDate(end);
+    applyFilters();
+  }
 
-      const ctx = document.getElementById('velocityChart').getContext('2d');
-      if (velocityChartInstance) velocityChartInstance.destroy();
+  function applyFilters() {
+    const search = (document.getElementById('searchInput').value || "").toLowerCase();
+    const fromStr = document.getElementById('dateFrom').value;
+    const toStr = document.getElementById('dateTo').value;
 
-      velocityChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-          labels,
-          datasets: [
-            {
-              type: 'bar',
-              label: 'Amount Collected (Right Axis - ₹k)',
-              data: revData,
-              backgroundColor: 'rgba(16, 185, 129, 0.45)',
-              borderRadius: 4,
-              yAxisID: 'yRev'
-            },
-            {
-              type: 'line',
-              label: 'Leads (Left Axis)',
-              data: leadsData,
-              borderColor: '#6366f1',
-              backgroundColor: '#6366f1',
-              tension: 0.35,
-              pointRadius: 3,
-              yAxisID: 'yCount'
-            },
-            {
-              type: 'line',
-              label: 'Connected Calls',
-              data: connData,
-              borderColor: '#06b6d4',
-              backgroundColor: '#06b6d4',
-              borderDash: [4, 4],
-              tension: 0.35,
-              pointRadius: 2,
-              yAxisID: 'yCount'
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          interaction: { mode: 'index', intersect: false },
-          plugins: {
-            legend: { position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10 } } },
-            tooltip: {
-              callbacks: {
-                afterBody: (items) => {
-                  const idx = items[0].dataIndex;
-                  const dObj = dateMap[sortedDates[idx]];
-                  document.getElementById('inspDate').innerText = dObj.date;
-                  document.getElementById('inspLeads').innerText = dObj.leads;
-                  document.getElementById('inspConn').innerText = dObj.connected;
-                  document.getElementById('inspAdm').innerText = dObj.admissions;
-                  document.getElementById('inspRev').innerText = fmtInr(dObj.amount);
-                  return '';
-                }
+    const from = fromStr ? new Date(fromStr) : null;
+    if (from) from.setHours(0, 0, 0, 0);
+
+    const to = toStr ? new Date(toStr) : null;
+    if (to) to.setHours(23, 59, 59, 999);
+
+    const source = document.getElementById('sourceFilter').value;
+    const team = document.getElementById('teamFilter').value;
+    const exec = document.getElementById('execFilter').value;
+
+    filteredData = allRawData.filter(r => {
+      if (search && !r.executive.toLowerCase().includes(search) && !r.team.toLowerCase().includes(search) && !r.source.toLowerCase().includes(search)) return false;
+      if (from && r.date && r.date < from) return false;
+      if (to && r.date && r.date > to) return false;
+      if (currentStreamFilter !== 'ALL' && r.stream.toLowerCase() !== currentStreamFilter.toLowerCase()) return false;
+      if (source !== 'ALL' && r.source !== source) return false;
+      if (team !== 'ALL' && r.team !== team) return false;
+      if (exec !== 'ALL' && r.executive !== exec) return false;
+      return true;
+    });
+
+    document.getElementById('displayCount').innerText = `Displaying: ${filteredData.length} of ${allRawData.length} total entries`;
+    renderDashboard();
+  }
+
+  function renderDashboard() {
+    renderTopKPIs();
+    renderExecutiveOverview();
+    renderFunnel();
+    renderChannelMatrix();
+    renderTeamLeaderboard();
+    renderScoreboard();
+    renderIndividualInsights();
+  }
+
+  // =========================================================================
+  // 5. RENDERING MODULES
+  // =========================================================================
+  function renderTopKPIs() {
+    let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amount = 0, dur = 0, redials = 0;
+    
+    filteredData.forEach(r => {
+      leads += r.leads;
+      conn += r.connected;
+      qual += r.qualified;
+      fresh += r.fresh;
+      follow += r.followup;
+      ref += r.referral;
+      amount += r.amount;
+      dur += r.duration;
+      redials += r.redials;
+    });
+
+    const admissions = fresh + follow + ref;
+    const avgTicket = admissions > 0 ? (amount / admissions) : 0;
+    const connectRate = leads > 0 ? (conn / leads) : 0;
+    const qualRate = conn > 0 ? (qual / conn) : 0;
+    const admQualRate = qual > 0 ? (admissions / qual) : 0;
+    const overallConversion = leads > 0 ? (admissions / leads) : 0;
+
+    document.getElementById('kpiAmount').innerText = fmtInr(amount);
+    document.getElementById('kpiAvgTicket').innerText = `Avg Ticket: ${fmtInr(avgTicket)}`;
+    document.getElementById('kpiAdmissions').innerText = fmtNum(admissions);
+    document.getElementById('kpiAdmSplit').innerHTML = `<span>Fresh: ${fresh}</span> • <span>Followup: ${follow}</span> • <span>Ref: ${ref}</span>`;
+    document.getElementById('kpiLeads').innerHTML = `${fmtNum(leads)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Leads</span>`;
+    document.getElementById('kpiConnectRate').innerText = `${fmtPct(connectRate)} Connected`;
+    document.getElementById('kpiCallsCount').innerText = `(${fmtNum(conn)} calls)`;
+    document.getElementById('kpiQualRate').innerHTML = `${fmtPct(qualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Qualification</span>`;
+    document.getElementById('kpiDurationSub').innerHTML = `<span>${fmtNum(qual)} Qualified</span> • <span>${Math.round(dur/60)}h talk time</span> • <span>${fmtNum(redials)} Re-dials</span>`;
+    document.getElementById('kpiAdmQualRate').innerHTML = `${fmtPct(admQualRate)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Qual</span>`;
+    document.getElementById('kpiAdmQualSub').innerText = `${admissions} Admissions from ${qual} Qualified`;
+    document.getElementById('kpiOverallConversion').innerHTML = `${fmtPct(overallConversion)} <span style="font-size:0.8rem; font-weight:500; color:var(--text-muted);">Adm / Leads</span>`;
+    document.getElementById('kpiOverallConversionSub').innerText = `${admissions} Admissions from ${fmtNum(leads)} Leads`;
+  }
+
+  function renderExecutiveOverview() {
+    const dateMap = {};
+    let paidLeads = 0, paidConn = 0, paidAdm = 0, paidAmt = 0;
+    let orgLeads = 0, orgConn = 0, orgAdm = 0, orgAmt = 0;
+
+    filteredData.forEach(r => {
+      const dStr = r.date ? formatToInputDate(r.date) : (r.rawDate || 'Unknown');
+      if (!dateMap[dStr]) {
+        dateMap[dStr] = { date: dStr, leads: 0, connected: 0, admissions: 0, amount: 0, redials: 0 };
+      }
+      dateMap[dStr].leads += r.leads;
+      dateMap[dStr].connected += r.connected;
+      const adm = r.fresh + r.followup + r.referral;
+      dateMap[dStr].admissions += adm;
+      dateMap[dStr].amount += r.amount;
+      dateMap[dStr].redials += r.redials;
+
+      if (r.stream.toLowerCase() === 'paid') {
+        paidLeads += r.leads; paidConn += r.connected; paidAdm += adm; paidAmt += r.amount;
+      } else {
+        orgLeads += r.leads; orgConn += r.connected; orgAdm += adm; orgAmt += r.amount;
+      }
+    });
+
+    document.getElementById('paidRevenue').innerText = fmtInr(paidAmt);
+    document.getElementById('paidLeads').innerText = fmtNum(paidLeads);
+    document.getElementById('paidConnected').innerText = fmtNum(paidConn);
+    document.getElementById('paidAdmissions').innerText = fmtNum(paidAdm);
+
+    document.getElementById('organicRevenue').innerText = fmtInr(orgAmt);
+    document.getElementById('organicLeads').innerText = fmtNum(orgLeads);
+    document.getElementById('organicConnected').innerText = fmtNum(orgConn);
+    document.getElementById('organicAdmissions').innerText = fmtNum(orgAdm);
+
+    const totalL = paidLeads + orgLeads;
+    document.getElementById('paidLeadShare').innerText = totalL > 0 ? fmtPct(paidLeads / totalL) : "0.0%";
+
+    const sortedDates = Object.keys(dateMap).sort();
+    const labels = sortedDates.map(d => d.slice(5));
+    const leadsData = sortedDates.map(d => dateMap[d].leads);
+    const connData = sortedDates.map(d => dateMap[d].connected);
+    const revData = sortedDates.map(d => dateMap[d].amount / 1000);
+
+    const ctx = document.getElementById('velocityChart').getContext('2d');
+    if (velocityChartInstance) velocityChartInstance.destroy();
+
+    velocityChartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Amount Collected (Right Axis - ₹k)',
+            data: revData,
+            backgroundColor: 'rgba(16, 185, 129, 0.45)',
+            borderRadius: 4,
+            yAxisID: 'yRev'
+          },
+          {
+            type: 'line',
+            label: 'Leads (Left Axis)',
+            data: leadsData,
+            borderColor: '#6366f1',
+            backgroundColor: '#6366f1',
+            tension: 0.35,
+            pointRadius: 3,
+            yAxisID: 'yCount'
+          },
+          {
+            type: 'line',
+            label: 'Connected Calls',
+            data: connData,
+            borderColor: '#06b6d4',
+            backgroundColor: '#06b6d4',
+            borderDash: [4, 4],
+            tension: 0.35,
+            pointRadius: 2,
+            yAxisID: 'yCount'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'top', align: 'end', labels: { boxWidth: 10, font: { size: 10 } } },
+          tooltip: {
+            callbacks: {
+              afterBody: (items) => {
+                const idx = items[0].dataIndex;
+                const dObj = dateMap[sortedDates[idx]];
+                document.getElementById('inspDate').innerText = dObj.date;
+                document.getElementById('inspLeads').innerText = dObj.leads;
+                document.getElementById('inspConn').innerText = dObj.connected;
+                document.getElementById('inspAdm').innerText = dObj.admissions;
+                document.getElementById('inspRev').innerText = fmtInr(dObj.amount);
+                return '';
               }
             }
-          },
-          scales: {
-            yCount: { position: 'left', grid: { color: '#f1f5f9' }, title: { display: true, text: 'Call & Lead Volume', font: { size: 10 } } },
-            yRev: { position: 'right', grid: { display: false }, ticks: { callback: v => `₹${v}k` }, title: { display: true, text: 'Revenue (₹)', font: { size: 10 } } },
-            x: { grid: { display: false } }
           }
+        },
+        scales: {
+          yCount: { position: 'left', grid: { color: '#f1f5f9' }, title: { display: true, text: 'Call & Lead Volume', font: { size: 10 } } },
+          yRev: { position: 'right', grid: { display: false }, ticks: { callback: v => `₹${v}k` }, title: { display: true, text: 'Revenue (₹)', font: { size: 10 } } },
+          x: { grid: { display: false } }
         }
-      });
+      }
+    });
 
-      const chMap = {};
-      filteredData.forEach(r => {
-        if (!chMap[r.source]) chMap[r.source] = { leads: 0, amount: 0, stream: r.stream };
-        chMap[r.source].leads += r.leads;
-        chMap[r.source].amount += r.amount;
-      });
+    const chMap = {};
+    filteredData.forEach(r => {
+      if (!chMap[r.source]) chMap[r.source] = { leads: 0, amount: 0, stream: r.stream };
+      chMap[r.source].leads += r.leads;
+      chMap[r.source].amount += r.amount;
+    });
 
-      const chSorted = Object.entries(chMap).sort((a,b) => b[1].leads - a[1].leads);
-      const maxL = chSorted.length > 0 ? chSorted[0][1].leads : 1;
-      
-      const barsHtml = chSorted.map(([src, d]) => `
-        <div class="channel-row">
-          <div class="channel-name" title="${src}">${src} <span class="tag-pill ${d.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${d.stream}</span></div>
-          <div class="channel-bar-wrap">
-            <div class="channel-bar-fill" style="width: ${(d.leads / maxL) * 100}%;"></div>
+    const chSorted = Object.entries(chMap).sort((a,b) => b[1].leads - a[1].leads);
+    const maxL = chSorted.length > 0 ? chSorted[0][1].leads : 1;
+    
+    const barsHtml = chSorted.map(([src, d]) => `
+      <div class="channel-row">
+        <div class="channel-name" title="${src}">${src} <span class="tag-pill ${d.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${d.stream}</span></div>
+        <div class="channel-bar-wrap">
+          <div class="channel-bar-fill" style="width: ${(d.leads / maxL) * 100}%;"></div>
+        </div>
+        <div class="channel-metrics">
+          <strong>${fmtNum(d.leads)}</strong> Leads • <span style="color:#10b981; font-weight:600;">${fmtInr(d.amount)}</span>
+        </div>
+      </div>
+    `).join("");
+    document.getElementById('channelBarsList').innerHTML = barsHtml;
+  }
+
+  function renderFunnel() {
+    let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amt = 0;
+    filteredData.forEach(r => {
+      leads += r.leads; conn += r.connected; qual += r.qualified;
+      fresh += r.fresh; follow += r.followup; ref += r.referral;
+      amt += r.amount;
+    });
+    const admissions = fresh + follow + ref;
+
+    document.getElementById('fnLeads').innerText = fmtNum(leads);
+    document.getElementById('fnConn').innerText = fmtNum(conn);
+    document.getElementById('fnQual').innerText = fmtNum(qual);
+    document.getElementById('fnAdm').innerText = fmtNum(admissions);
+    document.getElementById('fnAdmFee').innerText = `Completed enrollments with fee collection: ${fmtInr(amt)}`;
+
+    document.getElementById('fnConnRate').innerText = `${leads > 0 ? fmtPct(conn / leads) : '0%'} Connect Rate`;
+    document.getElementById('fnQualRate').innerText = `${conn > 0 ? fmtPct(qual / conn) : '0%'} of Connected`;
+    document.getElementById('fnOverallRate').innerText = `${leads > 0 ? fmtPct(admissions / leads) : '0%'} Overall Conversion`;
+
+    document.getElementById('fnFresh').innerText = fresh;
+    document.getElementById('fnFollow').innerText = follow;
+    document.getElementById('fnRef').innerText = ref;
+  }
+
+  function renderChannelMatrix() {
+    const srcMap = {};
+    filteredData.forEach(r => {
+      if (!srcMap[r.source]) {
+        srcMap[r.source] = { source: r.source, stream: r.stream, leads: 0, conn: 0, qual: 0, adm: 0, amt: 0 };
+      }
+      srcMap[r.source].leads += r.leads;
+      srcMap[r.source].conn += r.connected;
+      srcMap[r.source].qual += r.qualified;
+      srcMap[r.source].adm += (r.fresh + r.followup + r.referral);
+      srcMap[r.source].amt += r.amount;
+    });
+
+    const rows = Object.values(srcMap).sort((a,b) => b.leads - a.leads);
+    const html = rows.map(r => `
+      <tr>
+        <td style="font-weight:600;">${r.source}</td>
+        <td><span class="tag-pill ${r.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${r.stream}</span></td>
+        <td style="text-align:right;">${fmtNum(r.leads)}</td>
+        <td style="text-align:right;">${fmtNum(r.conn)}</td>
+        <td style="text-align:right; font-weight:600; color:#3b82f6;">${r.leads > 0 ? fmtPct(r.conn / r.leads) : '0.0%'}</td>
+        <td style="text-align:right;">${fmtNum(r.qual)}</td>
+        <td style="text-align:right; font-weight:700;">${r.adm}</td>
+        <td style="text-align:right; color:#8b5cf6;">${r.qual > 0 ? fmtPct(r.adm / r.qual) : '0.0%'}</td>
+        <td style="text-align:right;">${r.leads > 0 ? fmtPct(r.adm / r.leads) : '0.0%'}</td>
+        <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(r.amt)}</td>
+      </tr>
+    `).join("");
+    document.getElementById('channelMatrixBody').innerHTML = html;
+  }
+
+  function toggleSortDirection() {
+    currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
+    document.getElementById('sortDirectionText').innerText = currentSortOrder === 'desc' ? '↓ DESC' : '↑ ASC';
+    renderExecutiveRankingTable();
+  }
+
+  function setColumnSort(colKey) {
+    if (currentSortKey === colKey) {
+      toggleSortDirection();
+    } else {
+      currentSortKey = colKey;
+      currentSortOrder = 'desc';
+      document.getElementById('execSortBy').value = colKey;
+      document.getElementById('sortDirectionText').innerText = '↓ DESC';
+      renderExecutiveRankingTable();
+    }
+  }
+
+  function renderExecutiveRankingTable() {
+    currentSortKey = document.getElementById('execSortBy').value;
+
+    const execMap = {};
+    filteredData.forEach(r => {
+      if (!execMap[r.executive]) {
+        execMap[r.executive] = { 
+          name: r.executive, 
+          team: r.team, 
+          leads: 0, 
+          connected: 0, 
+          qualified: 0, 
+          duration: 0, 
+          redials: 0, 
+          adm: 0, 
+          amount: 0 
+        };
+      }
+      execMap[r.executive].leads += r.leads;
+      execMap[r.executive].connected += r.connected;
+      execMap[r.executive].qualified += r.qualified;
+      execMap[r.executive].duration += r.duration;
+      execMap[r.executive].redials += r.redials;
+      execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
+      execMap[r.executive].amount += r.amount;
+    });
+
+    let execs = Object.values(execMap);
+
+    execs.sort((a, b) => {
+      let valA, valB;
+      switch (currentSortKey) {
+        case 'amount': valA = a.amount; valB = b.amount; break;
+        case 'admissions': valA = a.adm; valB = b.adm; break;
+        case 'leads': valA = a.leads; valB = b.leads; break;
+        case 'connected': valA = a.connected; valB = b.connected; break;
+        case 'qualified': valA = a.qualified; valB = b.qualified; break;
+        case 'connectRate': 
+          valA = a.leads > 0 ? (a.connected / a.leads) : 0; 
+          valB = b.leads > 0 ? (b.connected / b.leads) : 0; 
+          break;
+        case 'duration': valA = a.duration; valB = b.duration; break;
+        case 'redials': valA = a.redials; valB = b.redials; break;
+        case 'admQual': 
+          valA = a.qualified > 0 ? (a.adm / a.qualified) : 0; 
+          valB = b.qualified > 0 ? (b.adm / b.qualified) : 0; 
+          break;
+        case 'convRate': 
+          valA = a.leads > 0 ? (a.adm / a.leads) : 0; 
+          valB = b.leads > 0 ? (b.adm / b.leads) : 0; 
+          break;
+        case 'name': return currentSortOrder === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
+        case 'team': return currentSortOrder === 'desc' ? b.team.localeCompare(a.team) : a.team.localeCompare(b.team);
+        default: valA = a.amount; valB = b.amount;
+      }
+      return currentSortOrder === 'desc' ? valB - valA : valA - valB;
+    });
+
+    const execHtml = execs.map((e, idx) => {
+      const cRate = e.leads > 0 ? (e.connected / e.leads) : 0;
+      const qConv = e.qualified > 0 ? (e.adm / e.qualified) : 0;
+      const oConv = e.leads > 0 ? (e.adm / e.leads) : 0;
+      const hrs = Math.floor(e.duration / 60);
+      const mins = Math.round(e.duration % 60);
+
+      return `
+        <tr>
+          <td><strong style="display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; background:#f1f5f9; border-radius:50%; font-size:0.75rem;">${idx + 1}</strong></td>
+          <td style="font-weight:700;">${e.name}</td>
+          <td style="color:var(--text-muted); font-size:0.78rem;">${e.team}</td>
+          <td style="text-align:right;">${fmtNum(e.leads)}</td>
+          <td style="text-align:right;">${fmtNum(e.connected)}</td>
+          <td style="text-align:right;">${fmtNum(e.qualified)}</td>
+          <td style="text-align:right; font-weight:600; color:#3b82f6;">${fmtPct(cRate)}</td>
+          <td style="text-align:right;">${hrs}h ${mins}m</td>
+          <td style="text-align:right;">${fmtNum(e.redials)}</td>
+          <td style="text-align:right; font-weight:700; color:#10b981;">${e.adm}</td>
+          <td style="text-align:right; color:#8b5cf6;">${fmtPct(qConv)}</td>
+          <td style="text-align:right;">${fmtPct(oConv)}</td>
+          <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(e.amount)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    document.getElementById('execRankingBody').innerHTML = execHtml;
+  }
+
+  function renderTeamLeaderboard() {
+    const teamMap = {};
+    filteredData.forEach(r => {
+      if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, leads: 0, adm: 0, amount: 0, execs: new Set() };
+      teamMap[r.team].leads += r.leads;
+      teamMap[r.team].adm += (r.fresh + r.followup + r.referral);
+      teamMap[r.team].amount += r.amount;
+      teamMap[r.team].execs.add(r.executive);
+    });
+
+    const cardsHtml = Object.values(teamMap).map(t => {
+      const conv = t.leads > 0 ? fmtPct(t.adm / t.leads) : "0.0%";
+      return `
+        <div class="team-card">
+          <div class="tc-header">
+            <span class="tc-title">${t.name}</span>
+            <span class="tc-badge">${t.execs.size} Executives</span>
           </div>
-          <div class="channel-metrics">
-            <strong>${fmtNum(d.leads)}</strong> Leads • <span style="color:#10b981; font-weight:600;">${fmtInr(d.amount)}</span>
+          <div class="tc-summary">
+            <div>Leads Handled: <strong>${fmtNum(t.leads)}</strong></div>
+            <div>Admissions: <strong>${t.adm}</strong></div>
+            <div>Collected: <strong>${fmtInr(t.amount)}</strong></div>
+            <div>Conv. Rate: <strong>${conv}</strong></div>
+          </div>
+          <div style="font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between; border-top:1px solid var(--border-subtle); padding-top:8px;">
+            <span>Total Amount Collected:</span>
+            <strong style="color:#10b981;">${fmtInr(t.amount)}</strong>
           </div>
         </div>
-      `).join("");
-      document.getElementById('channelBarsList').innerHTML = barsHtml;
-    }
+      `;
+    }).join("");
+    document.getElementById('teamCardsContainer').innerHTML = cardsHtml;
 
-    function renderFunnel() {
-      let leads = 0, conn = 0, qual = 0, fresh = 0, follow = 0, ref = 0, amt = 0;
-      filteredData.forEach(r => {
-        leads += r.leads; conn += r.connected; qual += r.qualified;
-        fresh += r.fresh; follow += r.followup; ref += r.referral;
-        amt += r.amount;
-      });
-      const admissions = fresh + follow + ref;
+    renderExecutiveRankingTable();
+  }
 
-      document.getElementById('fnLeads').innerText = fmtNum(leads);
-      document.getElementById('fnConn').innerText = fmtNum(conn);
-      document.getElementById('fnQual').innerText = fmtNum(qual);
-      document.getElementById('fnAdm').innerText = fmtNum(admissions);
-      document.getElementById('fnAdmFee').innerText = `Completed enrollments with fee collection: ${fmtInr(amt)}`;
+  function renderScoreboard() {
+    const filterDays = getActiveFilterDays();
+    const durLabel = document.getElementById('sbFilterDuration');
+    if (durLabel) durLabel.innerText = `${filterDays} Days`;
 
-      document.getElementById('fnConnRate').innerText = `${leads > 0 ? fmtPct(conn / leads) : '0%'} Connect Rate`;
-      document.getElementById('fnQualRate').innerText = `${conn > 0 ? fmtPct(qual / conn) : '0%'} of Connected`;
-      document.getElementById('fnOverallRate').innerText = `${leads > 0 ? fmtPct(admissions / leads) : '0%'} Overall Conversion`;
+    let totalAdm = 0, totalRev = 0;
+    const teamMap = {};
 
-      document.getElementById('fnFresh').innerText = fresh;
-      document.getElementById('fnFollow').innerText = follow;
-      document.getElementById('fnRef').innerText = ref;
-    }
+    filteredData.forEach(r => {
+      const adm = r.fresh + r.followup + r.referral;
+      totalAdm += adm;
+      totalRev += r.amount;
 
-    function renderChannelMatrix() {
-      const srcMap = {};
-      filteredData.forEach(r => {
-        if (!srcMap[r.source]) {
-          srcMap[r.source] = { source: r.source, stream: r.stream, leads: 0, conn: 0, qual: 0, adm: 0, amt: 0 };
-        }
-        srcMap[r.source].leads += r.leads;
-        srcMap[r.source].conn += r.connected;
-        srcMap[r.source].qual += r.qualified;
-        srcMap[r.source].adm += (r.fresh + r.followup + r.referral);
-        srcMap[r.source].amt += r.amount;
-      });
+      if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, adm: 0, amount: 0, execs: {} };
+      teamMap[r.team].adm += adm;
+      teamMap[r.team].amount += r.amount;
 
-      const rows = Object.values(srcMap).sort((a,b) => b.leads - a.leads);
-      const html = rows.map(r => `
-        <tr>
-          <td style="font-weight:600;">${r.source}</td>
-          <td><span class="tag-pill ${r.stream.toLowerCase() === 'paid' ? 'tag-paid' : 'tag-organic'}">${r.stream}</span></td>
-          <td style="text-align:right;">${fmtNum(r.leads)}</td>
-          <td style="text-align:right;">${fmtNum(r.conn)}</td>
-          <td style="text-align:right; font-weight:600; color:#3b82f6;">${r.leads > 0 ? fmtPct(r.conn / r.leads) : '0.0%'}</td>
-          <td style="text-align:right;">${fmtNum(r.qual)}</td>
-          <td style="text-align:right; font-weight:700;">${r.adm}</td>
-          <td style="text-align:right; color:#8b5cf6;">${r.qual > 0 ? fmtPct(r.adm / r.qual) : '0.0%'}</td>
-          <td style="text-align:right;">${r.leads > 0 ? fmtPct(r.adm / r.leads) : '0.0%'}</td>
-          <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(r.amt)}</td>
-        </tr>
-      `).join("");
-      document.getElementById('channelMatrixBody').innerHTML = html;
-    }
-
-    // Colors matching canvas scoreboard cards exactly
-    const TEAM_THEMES = [
-      { rank: '#1', rankBg: '#f59e0b', badgeBg: '#fef3c7', badgeColor: '#b45309', dot: '#f59e0b' },
-      { rank: '#2', rankBg: '#2563eb', badgeBg: '#dbeafe', badgeColor: '#1d4ed8', dot: '#2563eb' },
-      { rank: '#3', rankBg: '#10b981', badgeBg: '#d1fae5', badgeColor: '#047857', dot: '#10b981' },
-      { rank: '#4', rankBg: '#8b5cf6', badgeBg: '#ede9fe', badgeColor: '#6d28d9', dot: '#8b5cf6' },
-      { rank: '#5', rankBg: '#f43f5e', badgeBg: '#ffe4e6', badgeColor: '#be123c', dot: '#f43f5e' },
-      { rank: '#6', rankBg: '#0ea5e9', badgeBg: '#e0f2fe', badgeColor: '#0369a1', dot: '#0ea5e9' },
-      { rank: '#7', rankBg: '#c026d3', badgeBg: '#fae8ff', badgeColor: '#86198f', dot: '#c026d3' },
-      { rank: '#8', rankBg: '#0d9488', badgeBg: '#ccfbf1', badgeColor: '#0f766e', dot: '#0d9488' }
-    ];
-
-    function renderScoreboard() {
-      const filterDays = getActiveFilterDays();
-      const durLabel = document.getElementById('sbFilterDuration');
-      if (durLabel) durLabel.innerText = `${filterDays} Days`;
-
-      let totalAdm = 0, totalRev = 0;
-      const teamMap = {};
-
-      filteredData.forEach(r => {
-        const adm = r.fresh + r.followup + r.referral;
-        totalAdm += adm;
-        totalRev += r.amount;
-
-        if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, adm: 0, amount: 0, execs: {} };
-        teamMap[r.team].adm += adm;
-        teamMap[r.team].amount += r.amount;
-
-        if (!teamMap[r.team].execs[r.executive]) {
-          teamMap[r.team].execs[r.executive] = { name: r.executive, adm: 0, amount: 0 };
-        }
-        teamMap[r.team].execs[r.executive].adm += adm;
-        teamMap[r.team].execs[r.executive].amount += r.amount;
-      });
-
-      document.getElementById('sbTotalAdm').innerText = totalAdm;
-      document.getElementById('sbTotalRev').innerText = fmtInr(totalRev);
-      document.getElementById('sbDailyAvgRev').innerText = fmtInr(totalRev / filterDays);
-      document.getElementById('sbDailyAvgAdm').innerText = (totalAdm / filterDays).toFixed(2);
-
-      const teamSorted = Object.values(teamMap).sort((a,b) => b.amount - a.amount);
-      const grid = document.getElementById('scoreboardGrid');
-
-      grid.innerHTML = teamSorted.map((t, idx) => {
-        const theme = TEAM_THEMES[idx % TEAM_THEMES.length];
-        const execList = Object.values(t.execs).sort((a,b) => b.amount - a.amount);
-
-        return `
-          <div class="sb-card">
-            <div class="sb-card-header">
-              <div class="sb-card-title-group">
-                <span class="sb-rank-badge" style="background:${theme.rankBg};">#${idx + 1}</span>
-                <span class="sb-team-name" title="${t.name}">${t.name}</span>
-              </div>
-              <span class="sb-exec-badge" style="background:${theme.badgeBg}; color:${theme.badgeColor};">
-                ${execList.length} Executives
-              </span>
-            </div>
-
-            <div class="sb-stats-grid">
-              <div class="sb-stat-tile">
-                <div class="sb-tile-label">TOTAL ADM</div>
-                <div class="sb-tile-val val-dark">${t.adm}</div>
-              </div>
-              <div class="sb-stat-tile">
-                <div class="sb-tile-label">TOTAL AMOUNT</div>
-                <div class="sb-tile-val val-green">${fmtInr(t.amount)}</div>
-              </div>
-              <div class="sb-stat-tile">
-                <div class="sb-tile-label">AVG ADM / DAY</div>
-                <div class="sb-tile-val val-blue">${(t.adm / filterDays).toFixed(2)}/d</div>
-              </div>
-              <div class="sb-stat-tile">
-                <div class="sb-tile-label">AVG AMOUNT / DAY</div>
-                <div class="sb-tile-val val-teal">${fmtInr(t.amount / filterDays)}/d</div>
-              </div>
-            </div>
-
-            <div class="sb-table-head">
-              <span style="flex:1.6;">Executive</span>
-              <span style="width:45px; text-align:center;">Adm</span>
-              <span style="flex:1.2; text-align:right;">Amount</span>
-            </div>
-
-            <div>
-              ${execList.map(e => `
-                <div class="sb-table-row">
-                  <span class="sb-exec-col-name" title="${e.name}">
-                    <span class="sb-dot" style="background:${theme.dot};"></span>
-                    ${e.name}
-                  </span>
-                  <span class="sb-exec-col-adm">${e.adm}</span>
-                  <span class="sb-exec-col-amt">${fmtInr(e.amount)}</span>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-        `;
-      }).join("");
-    }
-
-    function toggleSortDirection() {
-      currentSortOrder = currentSortOrder === 'desc' ? 'asc' : 'desc';
-      document.getElementById('sortDirectionText').innerText = currentSortOrder === 'desc' ? '↓ DESC' : '↑ ASC';
-      renderExecutiveRankingTable();
-    }
-
-    function setColumnSort(colKey) {
-      if (currentSortKey === colKey) {
-        toggleSortDirection();
-      } else {
-        currentSortKey = colKey;
-        currentSortOrder = 'desc';
-        document.getElementById('execSortBy').value = colKey;
-        document.getElementById('sortDirectionText').innerText = '↓ DESC';
-        renderExecutiveRankingTable();
+      if (!teamMap[r.team].execs[r.executive]) {
+        teamMap[r.team].execs[r.executive] = { name: r.executive, adm: 0, amount: 0 };
       }
-    }
+      teamMap[r.team].execs[r.executive].adm += adm;
+      teamMap[r.team].execs[r.executive].amount += r.amount;
+    });
 
-    function renderExecutiveRankingTable() {
-      currentSortKey = document.getElementById('execSortBy').value;
+    document.getElementById('sbTotalAdm').innerText = totalAdm;
+    document.getElementById('sbTotalRev').innerText = fmtInr(totalRev);
+    document.getElementById('sbDailyAvgRev').innerText = fmtInr(totalRev / filterDays);
+    document.getElementById('sbDailyAvgAdm').innerText = (totalAdm / filterDays).toFixed(2);
 
-      const execMap = {};
-      filteredData.forEach(r => {
-        if (!execMap[r.executive]) {
-          execMap[r.executive] = { 
-            name: r.executive, 
-            team: r.team, 
-            leads: 0, 
-            connected: 0, 
-            qualified: 0, 
-            duration: 0, 
-            redials: 0, 
-            adm: 0, 
-            amount: 0 
-          };
-        }
-        execMap[r.executive].leads += r.leads;
-        execMap[r.executive].connected += r.connected;
-        execMap[r.executive].qualified += r.qualified;
-        execMap[r.executive].duration += r.duration;
-        execMap[r.executive].redials += r.redials;
-        execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
-        execMap[r.executive].amount += r.amount;
-      });
+    const teamSorted = Object.values(teamMap).sort((a,b) => b.amount - a.amount);
+    const grid = document.getElementById('scoreboardGrid');
 
-      let execs = Object.values(execMap);
+    grid.innerHTML = teamSorted.map((t, idx) => {
+      const theme = TEAM_THEMES[idx % TEAM_THEMES.length];
+      const execList = Object.values(t.execs).sort((a,b) => b.amount - a.amount);
 
-      execs.sort((a, b) => {
-        let valA, valB;
-        switch (currentSortKey) {
-          case 'amount': valA = a.amount; valB = b.amount; break;
-          case 'admissions': valA = a.adm; valB = b.adm; break;
-          case 'leads': valA = a.leads; valB = b.leads; break;
-          case 'connected': valA = a.connected; valB = b.connected; break;
-          case 'qualified': valA = a.qualified; valB = b.qualified; break;
-          case 'connectRate': 
-            valA = a.leads > 0 ? (a.connected / a.leads) : 0; 
-            valB = b.leads > 0 ? (b.connected / b.leads) : 0; 
-            break;
-          case 'duration': valA = a.duration; valB = b.duration; break;
-          case 'redials': valA = a.redials; valB = b.redials; break;
-          case 'admQual': 
-            valA = a.qualified > 0 ? (a.adm / a.qualified) : 0; 
-            valB = b.qualified > 0 ? (b.adm / b.qualified) : 0; 
-            break;
-          case 'convRate': 
-            valA = a.leads > 0 ? (a.adm / a.leads) : 0; 
-            valB = b.leads > 0 ? (b.adm / b.leads) : 0; 
-            break;
-          case 'name': return currentSortOrder === 'desc' ? b.name.localeCompare(a.name) : a.name.localeCompare(b.name);
-          case 'team': return currentSortOrder === 'desc' ? b.team.localeCompare(a.team) : a.team.localeCompare(b.team);
-          default: valA = a.amount; valB = b.amount;
-        }
-
-        return currentSortOrder === 'desc' ? valB - valA : valA - valB;
-      });
-
-      const execHtml = execs.map((e, idx) => {
-        const cRate = e.leads > 0 ? (e.connected / e.leads) : 0;
-        const qConv = e.qualified > 0 ? (e.adm / e.qualified) : 0;
-        const oConv = e.leads > 0 ? (e.adm / e.leads) : 0;
-        const hrs = Math.floor(e.duration / 60);
-        const mins = Math.round(e.duration % 60);
-
-        return `
-          <tr>
-            <td><strong style="display:inline-block; width:22px; height:22px; line-height:22px; text-align:center; background:#f1f5f9; border-radius:50%; font-size:0.75rem;">${idx + 1}</strong></td>
-            <td style="font-weight:700;">${e.name}</td>
-            <td style="color:var(--text-muted); font-size:0.78rem;">${e.team}</td>
-            <td style="text-align:right;">${fmtNum(e.leads)}</td>
-            <td style="text-align:right;">${fmtNum(e.connected)}</td>
-            <td style="text-align:right;">${fmtNum(e.qualified)}</td>
-            <td style="text-align:right; font-weight:600; color:#3b82f6;">${fmtPct(cRate)}</td>
-            <td style="text-align:right;">${hrs}h ${mins}m</td>
-            <td style="text-align:right;">${fmtNum(e.redials)}</td>
-            <td style="text-align:right; font-weight:700; color:#10b981;">${e.adm}</td>
-            <td style="text-align:right; color:#8b5cf6;">${fmtPct(qConv)}</td>
-            <td style="text-align:right;">${fmtPct(oConv)}</td>
-            <td style="text-align:right; font-weight:700; color:#10b981;">${fmtInr(e.amount)}</td>
-          </tr>
-        `;
-      }).join("");
-
-      document.getElementById('execRankingBody').innerHTML = execHtml;
-    }
-
-    function renderTeamLeaderboard() {
-      const teamMap = {};
-      filteredData.forEach(r => {
-        if (!teamMap[r.team]) teamMap[r.team] = { name: r.team, leads: 0, adm: 0, amount: 0, execs: new Set() };
-        teamMap[r.team].leads += r.leads;
-        teamMap[r.team].adm += (r.fresh + r.followup + r.referral);
-        teamMap[r.team].amount += r.amount;
-        teamMap[r.team].execs.add(r.executive);
-      });
-
-      const cardsHtml = Object.values(teamMap).map(t => {
-        const conv = t.leads > 0 ? fmtPct(t.adm / t.leads) : "0.0%";
-        return `
-          <div class="team-card">
-            <div class="tc-header">
-              <span class="tc-title">${t.name}</span>
-              <span class="tc-badge">${t.execs.size} Executives</span>
+      return `
+        <div class="sb-card">
+          <div class="sb-card-header">
+            <div class="sb-card-title-group">
+              <span class="sb-rank-badge" style="background:${theme.rankBg};">#${idx + 1}</span>
+              <span class="sb-team-name" title="${t.name}">${t.name}</span>
             </div>
-            <div class="tc-summary">
-              <div>Leads Handled: <strong>${fmtNum(t.leads)}</strong></div>
-              <div>Admissions: <strong>${t.adm}</strong></div>
-              <div>Collected: <strong>${fmtInr(t.amount)}</strong></div>
-              <div>Conv. Rate: <strong>${conv}</strong></div>
+            <span class="sb-exec-badge" style="background:${theme.badgeBg}; color:${theme.badgeColor};">
+              ${execList.length} Executives
+            </span>
+          </div>
+
+          <div class="sb-stats-grid">
+            <div class="sb-stat-tile">
+              <div class="sb-tile-label">TOTAL ADM</div>
+              <div class="sb-tile-val val-dark">${t.adm}</div>
             </div>
-            <div style="font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between; border-top:1px solid var(--border-subtle); padding-top:8px;">
-              <span>Total Amount Collected:</span>
-              <strong style="color:#10b981;">${fmtInr(t.amount)}</strong>
+            <div class="sb-stat-tile">
+              <div class="sb-tile-label">TOTAL AMOUNT</div>
+              <div class="sb-tile-val val-green">${fmtInr(t.amount)}</div>
+            </div>
+            <div class="sb-stat-tile">
+              <div class="sb-tile-label">AVG ADM / DAY</div>
+              <div class="sb-tile-val val-blue">${(t.adm / filterDays).toFixed(2)}/d</div>
+            </div>
+            <div class="sb-stat-tile">
+              <div class="sb-tile-label">AVG AMOUNT / DAY</div>
+              <div class="sb-tile-val val-teal">${fmtInr(t.amount / filterDays)}/d</div>
             </div>
           </div>
-        `;
-      }).join("");
-      document.getElementById('teamCardsContainer').innerHTML = cardsHtml;
 
-      renderExecutiveRankingTable();
-    }
+          <div class="sb-table-head">
+            <span style="flex:1.6;">Executive</span>
+            <span style="width:45px; text-align:center;">Adm</span>
+            <span style="flex:1.2; text-align:right;">Amount</span>
+          </div>
 
-    function renderIndividualInsights() {
-      let gLeads = 0, gConn = 0, gQual = 0, gAdm = 0, gAmt = 0;
-      filteredData.forEach(r => {
-        gLeads += r.leads; gConn += r.connected; gQual += r.qualified;
-        gAdm += (r.fresh + r.followup + r.referral);
-        gAmt += r.amount;
-      });
-
-      const baseConnect = gLeads > 0 ? (gConn / gLeads) : 0;
-      const baseConversion = gLeads > 0 ? (gAdm / gLeads) : 0;
-      const baseAdmQual = gQual > 0 ? (gAdm / gQual) : 0;
-      const baseTicket = gAdm > 0 ? (gAmt / gAdm) : 0;
-
-      document.getElementById('baseConnRate').innerText = fmtPct(baseConnect);
-      document.getElementById('baseConvRate').innerText = fmtPct(baseConversion);
-      document.getElementById('baseAdmQual').innerText = fmtPct(baseAdmQual);
-      document.getElementById('baseTicket').innerText = fmtInr(baseTicket);
-
-      const execMap = {};
-      filteredData.forEach(r => {
-        if (!execMap[r.executive]) {
-          execMap[r.executive] = { name: r.executive, team: r.team, leads: 0, conn: 0, qual: 0, adm: 0, amount: 0, redials: 0, duration: 0 };
-        }
-        execMap[r.executive].leads += r.leads;
-        execMap[r.executive].conn += r.connected;
-        execMap[r.executive].qual += r.qualified;
-        execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
-        execMap[r.executive].amount += r.amount;
-        execMap[r.executive].redials += r.redials;
-        execMap[r.executive].duration += r.duration;
-      });
-
-      const counselors = Object.values(execMap).sort((a,b) => b.amount - a.amount);
-      const activeCount = counselors.length;
-      const withAdmCount = counselors.filter(c => c.adm > 0).length;
-
-      document.getElementById('inActiveCounselors').innerText = activeCount;
-      document.getElementById('inCounselorsWithAdm').innerText = withAdmCount;
-      document.getElementById('inAvgAdmCounselor').innerText = activeCount > 0 ? (gAdm / activeCount).toFixed(1) : 0;
-      document.getElementById('inAvgRevCounselor').innerText = activeCount > 0 ? fmtInr(gAmt / activeCount) : "₹0";
-
-      const html = counselors.map((c, idx) => {
-        const cRate = c.leads > 0 ? (c.conn / c.leads) : 0;
-        const convRate = c.leads > 0 ? (c.adm / c.leads) : 0;
-        const qRate = c.conn > 0 ? (c.qual / c.conn) : 0;
-        const diffConnect = ((cRate - baseConnect) * 100).toFixed(1);
-        const diffConv = ((convRate - baseConversion) * 100).toFixed(1);
-
-        return `
-          <div class="counselor-card">
-            <div class="cc-header">
-              <div class="cc-identity">
-                <div class="cc-avatar">${c.name.charAt(0)}</div>
-                <div>
-                  <div class="cc-name">${c.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">#${idx+1}</span></div>
-                  <div class="cc-team">${c.team} • ${c.leads} Assigned Leads</div>
-                </div>
+          <div>
+            ${execList.map(e => `
+              <div class="sb-table-row">
+                <span class="sb-exec-col-name" title="${e.name}">
+                  <span class="sb-dot" style="background:${theme.dot};"></span>
+                  ${e.name}
+                </span>
+                <span class="sb-exec-col-adm">${e.adm}</span>
+                <span class="sb-exec-col-amt">${fmtInr(e.amount)}</span>
               </div>
-              <div style="display:flex; gap:6px;">
-                <span class="tc-badge" style="background:#e0f2fe; color:#0369a1;">📞 ${c.conn} Connected</span>
-                <span class="tc-badge" style="background:#ede9fe; color:#6d28d9;">🎯 ${c.qual} Qualified</span>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderIndividualInsights() {
+    let gLeads = 0, gConn = 0, gQual = 0, gAdm = 0, gAmt = 0;
+    filteredData.forEach(r => {
+      gLeads += r.leads; gConn += r.connected; gQual += r.qualified;
+      gAdm += (r.fresh + r.followup + r.referral);
+      gAmt += r.amount;
+    });
+
+    const baseConnect = gLeads > 0 ? (gConn / gLeads) : 0;
+    const baseConversion = gLeads > 0 ? (gAdm / gLeads) : 0;
+    const baseAdmQual = gQual > 0 ? (gAdm / gQual) : 0;
+    const baseTicket = gAdm > 0 ? (gAmt / gAdm) : 0;
+
+    document.getElementById('baseConnRate').innerText = fmtPct(baseConnect);
+    document.getElementById('baseConvRate').innerText = fmtPct(baseConversion);
+    document.getElementById('baseAdmQual').innerText = fmtPct(baseAdmQual);
+    document.getElementById('baseTicket').innerText = fmtInr(baseTicket);
+
+    const execMap = {};
+    filteredData.forEach(r => {
+      if (!execMap[r.executive]) {
+        execMap[r.executive] = { name: r.executive, team: r.team, leads: 0, conn: 0, qual: 0, adm: 0, amount: 0, redials: 0, duration: 0 };
+      }
+      execMap[r.executive].leads += r.leads;
+      execMap[r.executive].conn += r.connected;
+      execMap[r.executive].qual += r.qualified;
+      execMap[r.executive].adm += (r.fresh + r.followup + r.referral);
+      execMap[r.executive].amount += r.amount;
+      execMap[r.executive].redials += r.redials;
+      execMap[r.executive].duration += r.duration;
+    });
+
+    const counselors = Object.values(execMap).sort((a,b) => b.amount - a.amount);
+    const activeCount = counselors.length;
+    const withAdmCount = counselors.filter(c => c.adm > 0).length;
+
+    document.getElementById('inActiveCounselors').innerText = activeCount;
+    document.getElementById('inCounselorsWithAdm').innerText = withAdmCount;
+    document.getElementById('inAvgAdmCounselor').innerText = activeCount > 0 ? (gAdm / activeCount).toFixed(1) : 0;
+    document.getElementById('inAvgRevCounselor').innerText = activeCount > 0 ? fmtInr(gAmt / activeCount) : "₹0";
+
+    const html = counselors.map((c, idx) => {
+      const cRate = c.leads > 0 ? (c.conn / c.leads) : 0;
+      const convRate = c.leads > 0 ? (c.adm / c.leads) : 0;
+      const qRate = c.conn > 0 ? (c.qual / c.conn) : 0;
+      const diffConnect = ((cRate - baseConnect) * 100).toFixed(1);
+      const diffConv = ((convRate - baseConversion) * 100).toFixed(1);
+
+      return `
+        <div class="counselor-card">
+          <div class="cc-header">
+            <div class="cc-identity">
+              <div class="cc-avatar">${c.name.charAt(0)}</div>
+              <div>
+                <div class="cc-name">${c.name} <span style="font-size:0.75rem; color:var(--text-muted); font-weight:400;">#${idx+1}</span></div>
+                <div class="cc-team">${c.team} • ${c.leads} Assigned Leads</div>
+              </div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <span class="tc-badge" style="background:#e0f2fe; color:#0369a1;">📞 ${c.conn} Connected</span>
+              <span class="tc-badge" style="background:#ede9fe; color:#6d28d9;">🎯 ${c.qual} Qualified</span>
+            </div>
+          </div>
+
+          <div class="cc-stats-4">
+            <div>Total Admissions<br><strong style="font-size:1.1rem;">${c.adm}</strong></div>
+            <div>Amount Collected<br><strong style="font-size:1.1rem; color:#10b981;">${fmtInr(c.amount)}</strong></div>
+            <div>Connect Rate<br><strong style="font-size:1.1rem;">${fmtPct(cRate)}</strong> <span style="font-size:0.65rem; color:${diffConnect >= 0 ? '#10b981' : '#ef4444'}">${diffConnect >= 0 ? '+' : ''}${diffConnect}%</span></div>
+            <div>Conversion Rate<br><strong style="font-size:1.1rem;">${fmtPct(convRate)}</strong> <span style="font-size:0.65rem; color:${diffConv >= 0 ? '#10b981' : '#ef4444'}">${diffConv >= 0 ? '+' : ''}${diffConv}%</span></div>
+          </div>
+
+          <div class="cc-sections-2">
+            <div class="cc-block cc-strengths">
+              <div class="cc-block-title" style="color:#15803d;">✔ Major Strengths & Value Drivers</div>
+              <p><strong>${cRate >= baseConnect ? 'High Reachability' : 'Active Engagement'}:</strong> ${fmtPct(cRate)} contact conversion on assigned leads.</p>
+              <p style="margin-top:6px;"><strong>Pipeline Tenacity:</strong> Logged ${fmtNum(c.redials)} re-dials keeping pipeline hot.</p>
+            </div>
+
+            <div class="cc-block cc-improvements">
+              <div class="cc-block-title" style="color:#b45309;">⚠ Areas for Improvement & Growth</div>
+              <p><strong>Needs Discovery:</strong> Screen for higher program-match earlier to increase qualification depth.</p>
+              <p style="margin-top:6px;"><strong>Coaching Action:</strong> Adopt systematic 3-touch re-dial workflow over 72 hours.</p>
+            </div>
+          </div>
+
+          <div class="benchmark-gauge-wrap">
+            <div style="font-weight:700; color:var(--text-muted); font-size:0.68rem; margin-bottom:8px; text-transform:uppercase;">Individual vs Team Benchmark Gauge</div>
+            
+            <div class="gauge-row">
+              <div class="gauge-labels">
+                <span>Reachability (Connect Rate)</span>
+                <span>${fmtPct(cRate)} (Baseline: ${fmtPct(baseConnect)})</span>
+              </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" style="width: ${Math.min(cRate*100, 100)}%; background:#f59e0b;"></div>
+                <div class="gauge-baseline-pin" style="left: ${baseConnect*100}%;"></div>
               </div>
             </div>
 
-            <div class="cc-stats-4">
-              <div>Total Admissions<br><strong style="font-size:1.1rem;">${c.adm}</strong></div>
-              <div>Amount Collected<br><strong style="font-size:1.1rem; color:#10b981;">${fmtInr(c.amount)}</strong></div>
-              <div>Connect Rate<br><strong style="font-size:1.1rem;">${fmtPct(cRate)}</strong> <span style="font-size:0.65rem; color:${diffConnect >= 0 ? '#10b981' : '#ef4444'}">${diffConnect >= 0 ? '+' : ''}${diffConnect}%</span></div>
-              <div>Conversion Rate<br><strong style="font-size:1.1rem;">${fmtPct(convRate)}</strong> <span style="font-size:0.65rem; color:${diffConv >= 0 ? '#10b981' : '#ef4444'}">${diffConv >= 0 ? '+' : ''}${diffConv}%</span></div>
-            </div>
-
-            <div class="cc-sections-2">
-              <div class="cc-block cc-strengths">
-                <div class="cc-block-title" style="color:#15803d;">✔ Major Strengths & Value Drivers</div>
-                <p><strong>${cRate >= baseConnect ? 'High Reachability' : 'Active Engagement'}:</strong> ${fmtPct(cRate)} contact conversion on assigned leads.</p>
-                <p style="margin-top:6px;"><strong>Pipeline Tenacity:</strong> Logged ${fmtNum(c.redials)} re-dials keeping pipeline hot.</p>
+            <div class="gauge-row" style="margin-top:10px;">
+              <div class="gauge-labels">
+                <span>Lead Discovery (Qualify Rate)</span>
+                <span>${fmtPct(qRate)} (Baseline: 23.8%)</span>
               </div>
-
-              <div class="cc-block cc-improvements">
-                <div class="cc-block-title" style="color:#b45309;">⚠ Areas for Improvement & Growth</div>
-                <p><strong>Needs Discovery:</strong> Screen for higher program-match earlier to increase qualification depth.</p>
-                <p style="margin-top:6px;"><strong>Coaching Action:</strong> Adopt systematic 3-touch re-dial workflow over 72 hours.</p>
+              <div class="gauge-track">
+                <div class="gauge-fill" style="width: ${Math.min(qRate*100, 100)}%; background:#3b82f6;"></div>
+                <div class="gauge-baseline-pin" style="left: 23.8%;"></div>
               </div>
             </div>
 
-            <div class="benchmark-gauge-wrap">
-              <div style="font-weight:700; color:var(--text-muted); font-size:0.68rem; margin-bottom:8px; text-transform:uppercase;">Individual vs Team Benchmark Gauge</div>
-              
-              <div class="gauge-row">
-                <div class="gauge-labels">
-                  <span>Reachability (Connect Rate)</span>
-                  <span>${fmtPct(cRate)} (Baseline: ${fmtPct(baseConnect)})</span>
-                </div>
-                <div class="gauge-track">
-                  <div class="gauge-fill" style="width: ${Math.min(cRate*100, 100)}%; background:#f59e0b;"></div>
-                  <div class="gauge-baseline-pin" style="left: ${baseConnect*100}%;"></div>
-                </div>
+            <div class="gauge-row" style="margin-top:10px;">
+              <div class="gauge-labels">
+                <span>Admissions Closing (Adm / Leads)</span>
+                <span>${fmtPct(convRate)} (Baseline: ${fmtPct(baseConversion)})</span>
               </div>
-
-              <div class="gauge-row" style="margin-top:10px;">
-                <div class="gauge-labels">
-                  <span>Lead Discovery (Qualify Rate)</span>
-                  <span>${fmtPct(qRate)} (Baseline: 23.8%)</span>
-                </div>
-                <div class="gauge-track">
-                  <div class="gauge-fill" style="width: ${Math.min(qRate*100, 100)}%; background:#3b82f6;"></div>
-                  <div class="gauge-baseline-pin" style="left: 23.8%;"></div>
-                </div>
-              </div>
-
-              <div class="gauge-row" style="margin-top:10px;">
-                <div class="gauge-labels">
-                  <span>Admissions Closing (Adm / Leads)</span>
-                  <span>${fmtPct(convRate)} (Baseline: ${fmtPct(baseConversion)})</span>
-                </div>
-                <div class="gauge-track">
-                  <div class="gauge-fill" style="width: ${Math.min(convRate*500, 100)}%; background:#10b981;"></div>
-                  <div class="gauge-baseline-pin" style="left: ${baseConversion*500}%;"></div>
-                </div>
+              <div class="gauge-track">
+                <div class="gauge-fill" style="width: ${Math.min(convRate*500, 100)}%; background:#10b981;"></div>
+                <div class="gauge-baseline-pin" style="left: ${baseConversion*500}%;"></div>
               </div>
             </div>
           </div>
-        `;
-      }).join("");
-      document.getElementById('counselorCardsList').innerHTML = html;
-    }
+        </div>
+      `;
+    }).join("");
+    document.getElementById('counselorCardsList').innerHTML = html;
+  }
 
-    function exportCSV() {
-      if (!filteredData.length) return alert("No data to export");
-      const headers = ["Date", "Source", "Stream", "Executive", "Team", "Leads", "Connected", "Qualified", "Fresh", "Followup", "Referral", "Amount", "Duration", "ReDials"];
-      const rows = filteredData.map(r => [
-        r.rawDate, r.source, r.stream, r.executive, r.team, r.leads, r.connected, r.qualified, r.fresh, r.followup, r.referral, r.amount, r.duration, r.redials
-      ]);
-      const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Admissions_Report_${new Date().toISOString().slice(0,10)}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+  function exportCSV() {
+    if (!filteredData.length) return alert("No data to export");
+    const headers = ["Date", "Source", "Stream", "Executive", "Team", "Leads", "Connected", "Qualified", "Fresh", "Followup", "Referral", "Amount", "Duration", "ReDials"];
+    const rows = filteredData.map(r => [
+      r.rawDate, r.source, r.stream, r.executive, r.team, r.leads, r.connected, r.qualified, r.fresh, r.followup, r.referral, r.amount, r.duration, r.redials
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Admissions_Report_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
-    // Initialize and run real-time poll every 30 seconds
-    fetchLiveData();
-    setInterval(fetchLiveData, 30000);
+  // Initial call & 30-sec polling
+  fetchLiveData();
+  setInterval(fetchLiveData, 30000);
   </script>
 </body>
 </html>
